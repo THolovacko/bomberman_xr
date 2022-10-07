@@ -1,0 +1,16 @@
+https://github.com/g-truc/glm/releases
+https://github.com/KhronosGroup/OpenXR-SDK-Source/releases
+https://github.com/KhronosGroup/OpenXR-SDK-Source/blob/main/src/common/xr_linear.h
+https://vulkan.lunarg.com/sdk/home#windows
+https://www.khronos.org/files/openxr-10-reference-guide.pdf
+https://github.com/jkuhlmann/cgltf/releases
+https://products.aspose.app/3d/conversion/fbx-to-gltf#:~:text=%E2%9D%93%20How%20can%20I%20convert,can%20download%20your%20result%20file.
+https://www.khronos.org/registry/glTF/specs/2.0/glTF-2.0.html
+https://vulkan.gpuinfo.org/listdevices.php
+https://www.intel.com/content/www/us/en/developer/topic-technology/graphics-research/samples.html
+https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0
+https://github.com/mackron/miniaudio
+https://github.com/nothings/stb
+https://github.com/bombomby/optick
+https://developer.qualcomm.com/sites/default/files/docs/adreno-gpu/developer-guide/gpu/overview.html
+https://developer.oculus.com/documentation/unity/ts-vulkanvalidation/

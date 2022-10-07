@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Oculus PC Debug|Win32">
+      <Configuration>Oculus PC Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Oculus PC Release|Win32">
+      <Configuration>Oculus PC Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Oculus PC Debug|x64">
+      <Configuration>Oculus PC Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Oculus PC Release|x64">
+      <Configuration>Oculus PC Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\pch.cpp" />
+    <ClCompile Include="src\simulation.cpp" />
+    <ClCompile Include="src\core_header_implementations.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="shaders\glsl\mesh_instance.frag">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|Win32'">glslc.exe %(Identity) -mfmt=num -o "$(SolutionDir)shaders\glsl\bin\%(Filename)%(Extension)".spv</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|Win32'">Compiling shader %(Identity) to $(SolutionDir)shaders\glsl\bin\%(Filename)%(Extension).spv</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|Win32'">$(SolutionDir)shaders\glsl\bin\%(Filename)%(Extension).spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|Win32'">false</LinkObjects>
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|Win32'">false</BuildInParallel>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|x64'">glslc.exe %(Identity) -mfmt=num -o "$(SolutionDir)shaders\glsl\bin\debug\%(Filename)%(Extension)".spv</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|x64'">Compiling shader %(Identity) to $(SolutionDir)shaders\glsl\bin\debug\%(Filename)%(Extension).spv</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|x64'">$(SolutionDir)shaders\glsl\bin\debug\%(Filename)%(Extension).spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|x64'">false</LinkObjects>
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|x64'">false</BuildInParallel>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|Win32'">glslc.exe %(Identity) -O -mfmt=num -o "$(SolutionDir)shaders\glsl\bin\%(Filename)%(Extension)".spv</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|x64'">glslc.exe %(Identity) -O -mfmt=num -o "$(SolutionDir)shaders\glsl\bin\release\%(Filename)%(Extension)".spv</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|Win32'">Compiling shader %(Identity) to $(SolutionDir)shaders\glsl\bin\%(Filename)%(Extension).spv</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|x64'">Compiling shader %(Identity) to $(SolutionDir)shaders\glsl\bin\release\%(Filename)%(Extension).spv</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|Win32'">$(SolutionDir)shaders\glsl\bin\%(Filename)%(Extension).spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|Win32'">false</LinkObjects>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|x64'">$(SolutionDir)shaders\glsl\bin\release\%(Filename)%(Extension).spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="shaders\glsl\mesh_instance.vert">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|Win32'">glslc.exe %(Identity) -mfmt=num -o "$(SolutiontDir)shaders\glsl\bin\%(Filename)%(Extension)".spv</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|Win32'">Compiling shader %(Identity) to $(SolutionDir)shaders\glsl\bin\%(Filename)%(Extension).spv</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|Win32'">$(SolutionDir)shaders\glsl\bin\%(Filename)%(Extension).spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|Win32'">false</LinkObjects>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|x64'">glslc.exe %(Identity) -mfmt=num -o "$(SolutiontDir)shaders\glsl\bin\debug\%(Filename)%(Extension)".spv</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|x64'">Compiling shader %(Identity) to $(SolutionDir)shaders\glsl\bin\debug\%(Filename)%(Extension).spv</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|x64'">$(SolutionDir)shaders\glsl\bin\debug\%(Filename)%(Extension).spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|x64'">false</LinkObjects>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|Win32'">glslc.exe %(Identity) -O -mfmt=num -o "$(SolutionDir)shaders\glsl\bin\%(Filename)%(Extension)".spv</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|Win32'">Compiling shader %(Identity) to $(SolutionDir)shaders\glsl\bin\%(Filename)%(Extension).spv</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|Win32'">$(SolutionDir)shaders\glsl\bin\%(Filename)%(Extension).spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|Win32'">false</LinkObjects>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|x64'">glslc.exe %(Identity) -O -mfmt=num -o "$(SolutionDir)shaders\glsl\bin\release\%(Filename)%(Extension)".spv</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|x64'">Compiling shader %(Identity) to $(SolutionDir)shaders\glsl\bin\release\%(Filename)%(Extension).spv</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|x64'">$(SolutionDir)shaders\glsl\bin\release\%(Filename)%(Extension).spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="bomberman_xr.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="icon.ico" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{67537684-2be9-498a-b576-68fc653f28e2}</ProjectGuid>
+    <RootNamespace>tomengine</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <UseOfMfc>Static</UseOfMfc>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <UseOfMfc>Static</UseOfMfc>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <UseOfMfc>Static</UseOfMfc>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <UseOfMfc>Static</UseOfMfc>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <CopyLocalDeploymentContent>true</CopyLocalDeploymentContent>
+    <CopyCppRuntimeToOutputDir>false</CopyCppRuntimeToOutputDir>
+    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(Configuration)\intermediate\$(Platform)\</IntDir>
+    <CustomBuildAfterTargets>Build</CustomBuildAfterTargets>
+    <TargetName>Tom Game-Debug</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <CopyLocalDeploymentContent>true</CopyLocalDeploymentContent>
+    <CopyCppRuntimeToOutputDir>false</CopyCppRuntimeToOutputDir>
+    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(Configuration)\intermediate\$(Platform)\</IntDir>
+    <TargetName>Tom Game</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <CopyLocalDeploymentContent>true</CopyLocalDeploymentContent>
+    <CopyCppRuntimeToOutputDir>false</CopyCppRuntimeToOutputDir>
+    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(Configuration)\intermediate\$(Platform)\</IntDir>
+    <CustomBuildAfterTargets>
+    </CustomBuildAfterTargets>
+    <TargetName>BombermanXR-Debug</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <CopyLocalDeploymentContent>true</CopyLocalDeploymentContent>
+    <CopyCppRuntimeToOutputDir>false</CopyCppRuntimeToOutputDir>
+    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(Configuration)\intermediate\$(Platform)\</IntDir>
+    <TargetName>BombermanXR</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN_32;OCULUS_PC;</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <EnableModules>true</EnableModules>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <ExceptionHandling>false</ExceptionHandling>
+      <AdditionalIncludeDirectories>
+      </AdditionalIncludeDirectories>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>openxr_loader.lib;vulkan-1.lib;winmm.lib;User32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
+    </Link>
+    <ProjectReference>
+      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
+    </ProjectReference>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>
+      </Message>
+    </PostBuildEvent>
+    <CustomBuildStep>
+      <Command>echo "tommmm"</Command>
+    </CustomBuildStep>
+    <PreBuildEvent>
+      <Command>if not exist $(SolutionDir)shaders\glsl\bin mkdir $(SolutionDir)shaders\glsl\bin </Command>
+      <Message>Creating bin directory if needed for shaders $(SolutionDir)shaders\glsl\bin</Message>
+    </PreBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN_32;NDEBUG;OCULUS_PC;</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <EnableModules>true</EnableModules>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <ExceptionHandling>false</ExceptionHandling>
+      <AdditionalIncludeDirectories>
+      </AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <Optimization>MaxSpeed</Optimization>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>openxr_loader.lib;vulkan-1.lib;winmm.lib;User32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <LinkTimeCodeGeneration>UseFastLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
+    </Link>
+    <ProjectReference>
+      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
+    </ProjectReference>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>
+      </Message>
+    </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>if not exist $(SolutionDir)shaders\glsl\bin mkdir $(SolutionDir)shaders\glsl\bin </Command>
+      <Message>Creating bin directory if needed for shaders $(SolutionDir)shaders\glsl\bin</Message>
+    </PreBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Oculus PC Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>X64;OCULUS_PC;APPLICATION_NAME="$(TargetName)";MA_ENABLE_ONLY_SPECIFIC_BACKENDS;MA_ENABLE_WASAPI</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <EnableModules>true</EnableModules>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <ExceptionHandling>false</ExceptionHandling>
+      <AdditionalIncludeDirectories>$(SolutionDir)dependencies\Optick_1.4.0\include;$(SolutionDir)dependencies\ovr_audio_spatializer_native_32.0.0\AudioSDK\Include;$(SolutionDir)dependencies\miniaudio-master-04-20-2022\miniaudio-master;$(SolutionDir)dependencies\openxr_linear-05-27-2022;$(SolutionDir)dependencies\cgltf-1.12;$(SolutionDir)dependencies\stb-master-09-10-2021;$(SolutionDir)dependencies\openxr_sdk-1.0.24\openxr_loader_windows\include;$(SolutionDir)dependencies\glm-0.9.9.8;$(VK_SDK_PATH)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)dependencies\Optick_1.4.0\lib\x64\debug;$(VK_SDK_PATH)\Lib;$(SolutionDir)dependencies\ovr_audio_spatializer_native_32.0.0\AudioSDK\Lib\x64;$(SolutionDir)dependencies\openxr_sdk-1.0.24\openxr_loader_windows\x64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ovraudio64.lib;openxr_loader.lib;vulkan-1.lib;winmm.lib;User32.lib;OptickCore.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
+    </Link>
+    <ProjectReference>
+      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
+    </ProjectReference>
+    <PostBuildEvent>
+      <Command>xcopy /y /d /f $(SolutionDir)dependencies\openxr_sdk-1.0.24\openxr_loader_windows\x64\bin\openxr_loader.dll "$(TargetDir)"
+xcopy /y /s /d /f  $(SolutionDir)assets "$(TargetDir)\assets"
+xcopy /y /d /f $(SolutionDir)dependencies\ovr_audio_spatializer_native_32.0.0\AudioSDK\Lib\x64\ovraudio64.dll "$(TargetDir)"
+xcopy /y /d /f $(SolutionDir)dependencies\Optick_1.4.0\lib\x64\debug\OptickCore.dll "$(TargetDir)"</Command>
+      <Message>
+      </Message>
+    </PostBuildEvent>
+    <CustomBuildStep>
+      <Command>
+      </Command>
+    </CustomBuildStep>
+    <PreBuildEvent>
+      <Command>if not exist $(SolutionDir)shaders\glsl\bin\debug mkdir $(SolutionDir)shaders\glsl\bin\debug;
+if not exist "$(TargetDir)assets" mkdir "$(TargetDir)assets";</Command>
+      <Message>
+      </Message>
+    </PreBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Oculus PC Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>X64;NDEBUG;OCULUS_PC;APPLICATION_NAME="$(TargetName)";MA_ENABLE_ONLY_SPECIFIC_BACKENDS;MA_ENABLE_WASAPI</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <EnableModules>true</EnableModules>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <ExceptionHandling>false</ExceptionHandling>
+      <AdditionalIncludeDirectories>$(SolutionDir)dependencies\Optick_1.4.0\include;$(SolutionDir)dependencies\ovr_audio_spatializer_native_32.0.0\AudioSDK\Include;$(SolutionDir)dependencies\miniaudio-master-04-20-2022\miniaudio-master;$(SolutionDir)dependencies\openxr_linear-05-27-2022;$(SolutionDir)dependencies\cgltf-1.12;$(SolutionDir)dependencies\stb-master-09-10-2021;$(SolutionDir)dependencies\openxr_sdk-1.0.24\openxr_loader_windows\include;$(SolutionDir)dependencies\glm-0.9.9.8;$(VK_SDK_PATH)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <Optimization>MaxSpeed</Optimization>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)dependencies\Optick_1.4.0\lib\x64\release;$(SolutionDir)dependencies\ovr_audio_spatializer_native_32.0.0\AudioSDK\Lib\x64;$(VK_SDK_PATH)\Lib;$(SolutionDir)dependencies\openxr_sdk-1.0.24\openxr_loader_windows\x64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ovraudio64.lib;openxr_loader.lib;vulkan-1.lib;winmm.lib;User32.lib;OptickCore.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <LinkTimeCodeGeneration>UseFastLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
+    </Link>
+    <ProjectReference>
+      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
+    </ProjectReference>
+    <PostBuildEvent>
+      <Command>xcopy /y /d /f $(SolutionDir)dependencies\openxr_sdk-1.0.24\openxr_loader_windows\x64\bin\openxr_loader.dll "$(TargetDir)"
+xcopy /y /s /d /f  $(SolutionDir)assets "$(TargetDir)\assets"
+xcopy /y /d /f $(SolutionDir)dependencies\ovr_audio_spatializer_native_32.0.0\AudioSDK\Lib\x64\ovraudio64.dll "$(TargetDir)"
+xcopy /y /d /f $(SolutionDir)dependencies\Optick_1.4.0\lib\x64\release\OptickCore.dll "$(TargetDir)"</Command>
+      <Message>
+      </Message>
+    </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>if not exist $(SolutionDir)shaders\glsl\bin\release mkdir $(SolutionDir)shaders\glsl\bin\release;
+if not exist "$(TargetDir)assets" mkdir "$(TargetDir)assets";</Command>
+      <Message>
+      </Message>
+    </PreBuildEvent>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

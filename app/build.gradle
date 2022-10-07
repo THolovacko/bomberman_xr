@@ -1,0 +1,86 @@
+plugins {
+  id 'com.android.application'
+}
+
+String application_name = "BombermanXR"
+
+def keystore_properties_file = rootProject.file("keystore.properties")
+def keystore_properties      = new Properties()
+
+try {
+  keystore_properties.load(new FileInputStream(keystore_properties_file))
+} catch(FileNotFoundException exception) {
+  keystore_properties_file.createNewFile()
+  keystore_properties_file.write("storePassword=myStorePassword\nkeyPassword=mykeyPassword\nkeyAlias=myKeyAlias\nstoreFile=C:\\\\Decided\\\\StoreFile\\\\Location")
+  keystore_properties.load(new FileInputStream(keystore_properties_file))
+}
+
+android {
+  signingConfigs {
+    release_signing_config {
+      storeFile file(keystore_properties['storeFile'])
+      storePassword keystore_properties['storePassword']
+      keyAlias keystore_properties['keyAlias']
+      keyPassword keystore_properties['keyPassword']
+      //enableV3Signing = true  // signing scheme version 2 is required and enabled by default and using enableV3Signing disables version 2 even when also using enableV2Signing
+    }
+  }
+  compileSdk 29 // this is also set in AndroidManifest.xml
+  buildToolsVersion "33.0.0"
+  ndkVersion "25.1.8937393"
+
+  sourceSets {
+    main {
+      assets.srcDirs = ['../assets']
+    }
+  }
+
+  defaultConfig { // some of these are also set in AndroidManifest.xml
+    applicationId "com.tom.bomberman_xr"
+    minSdk 29
+    targetSdk 29
+    versionCode 1
+    versionName "1.0"
+    resValue "string", "app_name", application_name
+
+    testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    ndk {
+      abiFilters 'arm64-v8a'
+    }
+    externalNativeBuild {
+      cmake {
+        cppFlags '-std=c++20 -stdlib=libc++ -DANDROID_STL=c++_static -DOCULUS_QUEST_2 -DARM64_V8A -DMA_ENABLE_ONLY_SPECIFIC_BACKENDS -DMA_ENABLE_AAUDIO -DGLM_FORCE_CXX2A -fno-exceptions -fstrict-aliasing -Wstrict-aliasing'
+        cppFlags '-DAPPLICATION_NAME=\\\\\\\"' + application_name + '\\\\\\\"'
+      }
+    }
+  }
+
+  buildTypes {
+    debug {
+      applicationIdSuffix ".debug"
+      debuggable true
+    }
+
+    release {
+      minifyEnabled false
+      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+      signingConfig signingConfigs.release_signing_config
+    }
+  }
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_1_8
+    targetCompatibility JavaVersion.VERSION_1_8
+  }
+  externalNativeBuild {
+    cmake {
+      path file('src/main/cpp/CMakeLists.txt')
+      version '3.22.1'
+    }
+  }
+  buildFeatures {
+    viewBinding true
+  }
+}
+
+dependencies {
+}

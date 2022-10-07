@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31729.503
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bomberman_xr", "bomberman_xr.vcxproj", "{67537684-2BE9-498A-B576-68FC653F28E2}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Oculus PC Debug|Windows x64 = Oculus PC Debug|Windows x64
+		Oculus PC Release|Windows x64 = Oculus PC Release|Windows x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{67537684-2BE9-498A-B576-68FC653F28E2}.Oculus PC Debug|Windows x64.ActiveCfg = Oculus PC Debug|x64
+		{67537684-2BE9-498A-B576-68FC653F28E2}.Oculus PC Debug|Windows x64.Build.0 = Oculus PC Debug|x64
+		{67537684-2BE9-498A-B576-68FC653F28E2}.Oculus PC Release|Windows x64.ActiveCfg = Oculus PC Release|x64
+		{67537684-2BE9-498A-B576-68FC653F28E2}.Oculus PC Release|Windows x64.Build.0 = Oculus PC Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {EA867D59-0F02-4B19-972E-A73CCE8DDA68}
+	EndGlobalSection
+EndGlobal
