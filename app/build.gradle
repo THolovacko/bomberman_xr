@@ -11,7 +11,7 @@ try {
   keystore_properties.load(new FileInputStream(keystore_properties_file))
 } catch(FileNotFoundException exception) {
   keystore_properties_file.createNewFile()
-  keystore_properties_file.write("storePassword=myStorePassword\nkeyPassword=mykeyPassword\nkeyAlias=myKeyAlias\nstoreFile=C:\\\\Decided\\\\StoreFile\\\\Location")
+  keystore_properties_file.write("storePassword=myStorePassword\nkeyPassword=mykeyPassword\nkeyAlias=myKeyAlias\nstoreFile=C:\\\\Decided\\\\StoreFile\\\\Location.jks")
   keystore_properties.load(new FileInputStream(keystore_properties_file))
 }
 
