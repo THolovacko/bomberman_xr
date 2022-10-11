@@ -1285,10 +1285,12 @@ void graphics_load_glb_model_from_file(const char* file_path, GraphicsModel& mod
         const float z_midpoint = lerp(smallest_z_position, largest_z_position, 0.5f);
 
         if (node->skin) {
-          assert(node->skin->skeleton);
-
           Matrix4x4f root_transform;
-          cgltf_node_transform_world(node->skin->skeleton, root_transform.m);
+          if (node->skin->skeleton) {
+            cgltf_node_transform_world(node->skin->skeleton, root_transform.m);
+          } else {
+            cgltf_node_transform_world(node, root_transform.m);
+          }
           invert_transform(root_transform);
 
           Transform pivot_transform; 

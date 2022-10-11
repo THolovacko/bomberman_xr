@@ -46,19 +46,23 @@ struct BomberMan {
 
   void init() {
     this->orientation = identity_orientation;
-    this->position = {0.0f,0.0f,-1.5f};
+    this->position = {0.0f,0.0f,0.0f};
 
-    this->material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/white_bomberman.png");
-    create_graphics_skin_from_glb("assets/models/white_bomberman.glb", this->skin);
+    this->material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/bomberman.png");
+    create_graphics_skin_from_glb("assets/models/bomberman.glb", this->skin);
 
     this->sound_id = create_audio_source("assets/sounds/white_bomberman_hurt.wav", 4.0f, 16.0f, 0.0f, 1.0f);
     this->skin.update_all(material_id);
-    //this->animations = load_animations_from_glb_file("assets/animations/bm_idle.glb");
+    this->animations = load_animations_from_glb_file("assets/models/bomberman.glb");
   }
 
   void update() {
-    Transform transform = identity_transform;
-    //Transform transform = {this->position,this->orientation,{0.01f,0.01f,0.01f}};
+    //Transform transform = identity_transform;
+    //transform.scale     = {0.001f,0.001f,0.001f};
+    Transform transform = {this->position,this->orientation,{0.001f,0.001f,0.001f}};
+
+    Vector3f axis = { 1.0f, 0.0f, 0.0f };
+    rotate_transform_global(transform, 90.0f, axis);
 
     update_audio_source(sound_id, position);
 
@@ -82,7 +86,7 @@ void SimulationState::init() {
   update_ambient_light_intensity(0.08f);
 
   test_man->init();
-  //test_man->skin.play_animation(test_man->animations.first_animation, true);
+  test_man->skin.play_animation(test_man->animations.first_animation + 3, true);
 }
 
 void SimulationState::update() {

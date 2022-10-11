@@ -14,3 +14,5 @@ https://github.com/nothings/stb
 https://github.com/bombomby/optick
 https://developer.qualcomm.com/sites/default/files/docs/adreno-gpu/developer-guide/gpu/overview.html
 https://developer.oculus.com/documentation/unity/ts-vulkanvalidation/
+https://www.donmccurdy.com/2017/11/06/creating-animated-gltf-characters-with-mixamo-and-blender/
+https://gltf-viewer.donmccurdy.com/
