@@ -57,12 +57,10 @@ struct BomberMan {
   }
 
   void update() {
-    //Transform transform = identity_transform;
-    //transform.scale     = {0.001f,0.001f,0.001f};
     Transform transform = {this->position,this->orientation,{0.001f,0.001f,0.001f}};
 
-    Vector3f axis = { 1.0f, 0.0f, 0.0f };
-    rotate_transform_global(transform, 90.0f, axis);
+    Vector3f x_axis = { 1.0f, 0.0f, 0.0f };
+    rotate_transform_global(transform, 90.0f, x_axis);
 
     update_audio_source(sound_id, position);
 
@@ -70,9 +68,60 @@ struct BomberMan {
   }
 };
 
+struct Bomb {
+  Vector3f position;
+  Quaternionf orientation;
+  uint32_t material_id;
+  uint32_t sound_id;
+  AnimationArray animations;
+  GraphicsMeshInstanceArray mesh_instance_array;
+
+  void init() {
+    this->orientation = identity_orientation;
+    this->position = {0.0f,0.0f,0.0f};
+
+    this->material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/bomb.png");
+    create_graphics_mesh_instance_array_from_glb("assets/models/bomb.glb", this->mesh_instance_array);
+  }
+
+  void update() {
+    Transform transform = {this->position,this->orientation,{0.25f,0.25f,0.25f}};
+    for (uint32_t i=0; i < this->mesh_instance_array.size; ++i) update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id, uint32_t(-1), i);
+  }
+};
+
+struct Fire {
+  Vector3f position;
+  Quaternionf orientation;
+  uint32_t material_id;
+  uint32_t sound_id;
+  GraphicsSkin skin;
+  AnimationArray animations;
+
+  void init() {
+    this->orientation = identity_orientation;
+    this->position = {0.0f,0.0f,1.0f};
+
+    this->material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/fire.png");
+    create_graphics_skin_from_glb("assets/models/fire.glb", this->skin);
+
+    this->skin.update_all(material_id);
+    this->animations = load_animations_from_glb_file("assets/models/fire.glb");
+  }
+
+  void update() {
+    Transform transform = {this->position,this->orientation,{0.25f,0.25f,0.25f}};
+    Vector3f x_axis = { 1.0f, 0.0f, 0.0f };
+    rotate_transform_global(transform, 90.0f, x_axis);
+    this->skin.update(0, transform, material_id);
+  }
+};
+
 
 HandControllers* hands = new HandControllers();
-BomberMan* test_man = new BomberMan();
+BomberMan* test_man    = new BomberMan();
+Bomb* test_bomb        = new Bomb();
+Fire* test_fire        = new Fire();
 
 void head_pose_dependent_sim() {
   hands->update();
@@ -87,6 +136,11 @@ void SimulationState::init() {
 
   test_man->init();
   test_man->skin.play_animation(test_man->animations.first_animation + 3, true);
+
+  test_fire->init();
+  test_fire->skin.play_animation(test_fire->animations.first_animation, true);
+
+  test_bomb->init();
 }
 
 void SimulationState::update() {
@@ -94,6 +148,8 @@ void SimulationState::update() {
 
   hands->update();
   test_man->update();
+  test_fire->update();
+  test_bomb->update();
 
   if (input_state.left_hand_select) {
     DEBUG_LOG("left hand select\n");
