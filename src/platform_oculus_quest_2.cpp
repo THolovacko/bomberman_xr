@@ -987,7 +987,7 @@ void platform_render_thread() {
     XrFrameEndInfo end_info{XR_TYPE_FRAME_END_INFO};
     end_info.displayTime          = platform_render_thread_frame_state.predictedDisplayTime;
     end_info.environmentBlendMode = platform_xr_blend_mode;
-    end_info.layerCount           = application_composition_layer == nullptr ? 0 : std::size(composition_layers);
+    end_info.layerCount           = application_composition_layer == nullptr ? 0 : (uint32_t)std::size(composition_layers);
     end_info.layers               = composition_layers;
     xrEndFrame(platform_xr_session, &end_info);
 

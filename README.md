@@ -10,7 +10,8 @@
 3. Run the installer program and then download every tool, package, etc... (the installer should automatically set/update the VULKAN_SDK, VK_SDK_PATH, and PATH environment variables)
 4. Allow **Unkown Sources** in *Settings > General* in the Oculus PC application
 5. Allow **Developer Runtime Features** in *Settings > Beta* in the Oculus PC application
-6. Restart your computer
+6. Allow **Passthrough over Oculus Link** in *Settings > Beta* in the Oculus PC application
+7. Restart your computer
 ### Quest 2
 7. Create an organization at https://developer.oculus.com/manage/organizations/create/
 8. Verify your account at https://developer.oculus.com/manage/verify/
