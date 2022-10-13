@@ -73,12 +73,11 @@ struct Bomb {
   Quaternionf orientation;
   uint32_t material_id;
   uint32_t sound_id;
-  AnimationArray animations;
   GraphicsMeshInstanceArray mesh_instance_array;
 
   void init() {
     this->orientation = identity_orientation;
-    this->position = {0.0f,0.0f,0.0f};
+    this->position = {1.0f,0.0f,0.0f};
 
     this->material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/bomb.png");
     create_graphics_mesh_instance_array_from_glb("assets/models/bomb.glb", this->mesh_instance_array);
@@ -100,7 +99,7 @@ struct Fire {
 
   void init() {
     this->orientation = identity_orientation;
-    this->position = {0.0f,0.0f,1.0f};
+    this->position = {0.0f,1.0f,0.0f};
 
     this->material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/fire.png");
     create_graphics_skin_from_glb("assets/models/fire.glb", this->skin);
@@ -117,11 +116,35 @@ struct Fire {
   }
 };
 
+struct BrickBlock {
+  Vector3f position;
+  Quaternionf orientation;
+  uint32_t material_id;
+  uint32_t material_id2;
+  GraphicsMeshInstanceArray mesh_instance_array;
+
+  void init() {
+    this->orientation = identity_orientation;
+    this->position = {-1.0f,0.0f,0.0f};
+
+    this->material_id  = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/brick_texture.png");
+    this->material_id2 = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, 0.0f, 0.8f);
+    create_graphics_mesh_instance_array_from_glb("assets/models/brick_block.glb", this->mesh_instance_array);
+  }
+
+  void update() {
+    Transform transform = {this->position,this->orientation,{0.00025f,0.00025f,0.1f}};
+    update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id, uint32_t(-1), 0);
+    for (uint32_t i=0; i < this->mesh_instance_array.size; ++i) update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id2, uint32_t(-1), 1);
+  }
+};
+
 
 HandControllers* hands = new HandControllers();
 BomberMan* test_man    = new BomberMan();
 Bomb* test_bomb        = new Bomb();
 Fire* test_fire        = new Fire();
+BrickBlock* test_brick = new BrickBlock();
 
 void head_pose_dependent_sim() {
   hands->update();
@@ -141,6 +164,7 @@ void SimulationState::init() {
   test_fire->skin.play_animation(test_fire->animations.first_animation, true);
 
   test_bomb->init();
+  test_brick->init();
 }
 
 void SimulationState::update() {
@@ -150,6 +174,7 @@ void SimulationState::update() {
   test_man->update();
   test_fire->update();
   test_bomb->update();
+  test_brick->update();
 
   if (input_state.left_hand_select) {
     DEBUG_LOG("left hand select\n");
