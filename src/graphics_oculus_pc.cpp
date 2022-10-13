@@ -1400,10 +1400,12 @@ void graphics_load_glb_model_from_file(const char* file_path, GraphicsModel& mod
         const float z_midpoint = lerp(smallest_z_position, largest_z_position, 0.5f);
 
         if (node->skin) {
-          assert(node->skin->skeleton);
-
           Matrix4x4f root_transform;
-          cgltf_node_transform_world(node->skin->skeleton, root_transform.m);
+          if (node->skin->skeleton) {
+            cgltf_node_transform_world(node->skin->skeleton, root_transform.m);
+          } else {
+            cgltf_node_transform_world(node, root_transform.m);
+          }
           invert_transform(root_transform);
 
           Transform pivot_transform; 
@@ -2577,6 +2579,8 @@ void vulkan_render_xr_views(const std::vector<XrCompositionLayerProjectionView>&
 
   static Transform skeleton_instances_joint_local_transforms[GraphicsSkeletonInstances::max_buffer_data_joint_count];
   static Transform skeleton_instances_joint_global_transforms[GraphicsSkeletonInstances::max_buffer_data_joint_count];
+
+  // TODO: currently forced to play an animation to render a skinned mesh; should render T-pose by default if not playing an animation
 
   // update skeleton_instances_joint_local_transforms
   for (GraphicsSkeletonInstances::Index skeleton_instance_index=0; skeleton_instance_index < (GraphicsSkeletonInstances::Index)std::size(graphics_render_thread_sim_state.animation_states); ++skeleton_instance_index) {
