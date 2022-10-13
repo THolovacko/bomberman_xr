@@ -48,7 +48,7 @@ struct BomberMan {
     this->orientation = identity_orientation;
     this->position = {0.0f,0.0f,0.0f};
 
-    this->material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/bomberman.png");
+    this->material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 1.0f, "assets/textures/bomberman.png");
     create_graphics_skin_from_glb("assets/models/bomberman.glb", this->skin);
 
     this->sound_id = create_audio_source("assets/sounds/white_bomberman_hurt.wav", 4.0f, 16.0f, 0.0f, 1.0f);
@@ -155,7 +155,7 @@ void SimulationState::init() {
 
   directional_light.update_direction({0.0f, -1.0f, 0.0f});
   directional_light.update_color({1.0f, 1.0f, 1.0f});
-  update_ambient_light_intensity(0.08f);
+  update_ambient_light_intensity(0.25f);
 
   test_man->init();
   test_man->skin.play_animation(test_man->animations.first_animation + 3, true);

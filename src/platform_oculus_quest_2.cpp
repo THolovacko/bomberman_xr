@@ -63,8 +63,10 @@ XrSessionState                       platform_xr_session_state           = XR_SE
 XrSpace                              platform_xr_app_space               = {};
 XrFormFactor                         platform_xr_form_factor             = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
 XrViewConfigurationType              platform_xr_view_configuration_type = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
-XrEnvironmentBlendMode               platform_xr_blend_mode              = {XR_ENVIRONMENT_BLEND_MODE_OPAQUE};
+XrEnvironmentBlendMode               platform_xr_blend_mode              = {XR_ENVIRONMENT_BLEND_MODE_OPAQUE};  // "The Meta Quest OpenXR implementation requires XrFrameEndInfo::environmentBlendMode to be set to XR_ENVIRONMENT_BLEND_MODE_OPAQUE, even when the Passthrough is used" - https://developer.oculus.com/documentation/native/android/mobile-passthrough/
 XrDebugUtilsMessengerEXT             platform_xr_debug_ext               = {};
+XrPassthroughFB                      platform_xr_passthrough_feature     = XR_NULL_HANDLE;
+XrPassthroughLayerFB                 platform_xr_passthrough_layer       = XR_NULL_HANDLE;
 bool                                 is_xr_session_active                = false;
 const XrPosef                        xr_pose_identity                    = { {0,0,0,1}, {0,0,0} };
 std::vector<XrView>                  platform_xr_views;
@@ -367,6 +369,8 @@ bool init_platform() {
       "XR_FB_android_surface_swapchain_create",
       "XR_META_vulkan_swapchain_create_info",
       "XR_FB_display_refresh_rate",
+      "XR_FB_passthrough",
+      "XR_FB_triangle_mesh",
       //"XR_OCULUS_android_session_state_enable",
       #ifndef NDEBUG
       "XR_EXT_debug_utils",
@@ -454,11 +458,17 @@ bool init_platform() {
 
   XrResult current_xr_result;
   {
+    XrSystemPassthroughPropertiesFB passthrough_system_properties{XR_TYPE_SYSTEM_PASSTHROUGH_PROPERTIES_FB};
+    XrSystemProperties system_properties{XR_TYPE_SYSTEM_PROPERTIES, &passthrough_system_properties};
+
     XrSystemGetInfo system_info = {XR_TYPE_SYSTEM_GET_INFO};
     platform_xr_system_id       = XR_NULL_SYSTEM_ID;
     system_info.formFactor      = platform_xr_form_factor;
     current_xr_result           = xrGetSystem(platform_xr_instance, &system_info, &platform_xr_system_id);
     assert(check_xr_result(current_xr_result)); // make sure headset is on
+
+    xrGetSystemProperties(platform_xr_instance, platform_xr_system_id, &system_properties);
+    assert(passthrough_system_properties.supportsPassthrough != XR_FALSE);
 
     PFN_xrGetVulkanGraphicsRequirements2KHR xrGetVulkanGraphicsRequirements2KHR = nullptr;
     xrGetInstanceProcAddr(platform_xr_instance, "xrGetVulkanGraphicsRequirements2KHR", (PFN_xrVoidFunction *)(&xrGetVulkanGraphicsRequirements2KHR));
@@ -497,6 +507,24 @@ bool init_platform() {
     platform_xr_views.resize(view_count, {XR_TYPE_VIEW});
     xrEnumerateViewConfigurationViews(platform_xr_instance, platform_xr_system_id, platform_xr_view_configuration_type, view_count, &view_count, platform_xr_config_views.data());
     assert(view_count == 2);  // one view per eye
+
+    XrPassthroughCreateInfoFB passthrough_info{XR_TYPE_PASSTHROUGH_CREATE_INFO_FB};
+    passthrough_info.next  = nullptr;
+    passthrough_info.flags = XR_PASSTHROUGH_IS_RUNNING_AT_CREATION_BIT_FB;
+
+    PFN_xrCreatePassthroughFB xrCreatePassthroughFB = nullptr;
+    current_xr_result = xrGetInstanceProcAddr(platform_xr_instance, "xrCreatePassthroughFB", (PFN_xrVoidFunction*)(&xrCreatePassthroughFB));
+    current_xr_result = xrCreatePassthroughFB(platform_xr_session, &passthrough_info, &platform_xr_passthrough_feature);
+
+    XrPassthroughLayerCreateInfoFB passthrough_layer_info{XR_TYPE_PASSTHROUGH_LAYER_CREATE_INFO_FB};
+    passthrough_layer_info.next        = nullptr;
+    passthrough_layer_info.passthrough = platform_xr_passthrough_feature;
+    passthrough_layer_info.purpose     = XR_PASSTHROUGH_LAYER_PURPOSE_RECONSTRUCTION_FB;
+    passthrough_layer_info.flags       = XR_PASSTHROUGH_IS_RUNNING_AT_CREATION_BIT_FB;
+
+    PFN_xrCreatePassthroughLayerFB xrCreatePassthroughLayerFB = nullptr;
+    current_xr_result = xrGetInstanceProcAddr(platform_xr_instance, "xrCreatePassthroughLayerFB", (PFN_xrVoidFunction*)(&xrCreatePassthroughLayerFB));
+    current_xr_result = xrCreatePassthroughLayerFB(platform_xr_session, &passthrough_layer_info, &platform_xr_passthrough_layer);
 
     uint32_t swapchain_format_count;
     xrEnumerateSwapchainFormats(platform_xr_session, 0, &swapchain_format_count, nullptr);
@@ -900,8 +928,8 @@ void platform_render_thread() {
       return;
     }
 
-    XrCompositionLayerBaseHeader* composition_layer           = nullptr;
-    XrCompositionLayerProjection composition_layer_projection = {XR_TYPE_COMPOSITION_LAYER_PROJECTION};
+    XrCompositionLayerBaseHeader* application_composition_layer           = nullptr;
+    XrCompositionLayerProjection application_composition_layer_projection = {XR_TYPE_COMPOSITION_LAYER_PROJECTION};
     std::vector<XrCompositionLayerProjectionView> xr_views;
 
     if (platform_render_thread_frame_state.shouldRender) {
@@ -937,19 +965,30 @@ void platform_render_thread() {
       XrSwapchainImageReleaseInfo release_info = {XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
       xrReleaseSwapchainImage(platform_xr_swapchain.handle, &release_info);
 
-      composition_layer_projection.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
-      composition_layer_projection.space      = platform_xr_app_space;
-      composition_layer_projection.viewCount  = (uint32_t)xr_views.size();
-      composition_layer_projection.views      = xr_views.data();
+      application_composition_layer_projection.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+      application_composition_layer_projection.space      = platform_xr_app_space;
+      application_composition_layer_projection.viewCount  = (uint32_t)xr_views.size();
+      application_composition_layer_projection.views      = xr_views.data();
 
-      composition_layer = (XrCompositionLayerBaseHeader*)&composition_layer_projection;
+      application_composition_layer = (XrCompositionLayerBaseHeader*)&application_composition_layer_projection;
     }
+
+    XrCompositionLayerPassthroughFB passthrough_composition_layer{XR_TYPE_COMPOSITION_LAYER_PASSTHROUGH_FB};
+    passthrough_composition_layer.next        = nullptr;
+    passthrough_composition_layer.layerHandle = platform_xr_passthrough_layer;
+    passthrough_composition_layer.flags       = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+    passthrough_composition_layer.space       = XR_NULL_HANDLE; // passthrough composition layer doesn’t contain any image data
+
+    XrCompositionLayerBaseHeader* composition_layers[] = {
+      (XrCompositionLayerBaseHeader*) &passthrough_composition_layer,
+      application_composition_layer,
+    };
 
     XrFrameEndInfo end_info{XR_TYPE_FRAME_END_INFO};
     end_info.displayTime          = platform_render_thread_frame_state.predictedDisplayTime;
     end_info.environmentBlendMode = platform_xr_blend_mode;
-    end_info.layerCount           = composition_layer == nullptr ? 0 : 1;
-    end_info.layers               = &composition_layer;
+    end_info.layerCount           = application_composition_layer == nullptr ? 0 : std::size(composition_layers);
+    end_info.layers               = composition_layers;
     xrEndFrame(platform_xr_session, &end_info);
 
     platform_render_thread_sync_semaphore.signal();

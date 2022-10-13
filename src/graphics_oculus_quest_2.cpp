@@ -2651,7 +2651,7 @@ void vulkan_render_xr_views(const std::vector<XrCompositionLayerProjectionView>&
   vkBeginCommandBuffer(vulkan_xr_swapchain_context->command_buffers[current_frame], &command_begin_info);
 
   static VkClearValue clear_values[2];
-  clear_values[0].color        = { {0.0f, 0.0f, 0.0f, 1.0f} };
+  clear_values[0].color        = { {0.0f, 0.0f, 0.0f, 0.0f} };
   clear_values[1].depthStencil = { 1.0f, 0 };
 
   VkRenderPassBeginInfo render_pass_begin_info{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
