@@ -27,7 +27,12 @@ struct HandControllers {
     rotate_transform_global(left_hand_transform, -60.0f, x_axis);
     rotate_transform_global(left_hand_transform, input_state.left_hand_transform.orientation);
 
-    const float scale = 0.011f;
+    Vector3f translation_offset_left  = {-0.008f,0.0225f,0.0225f};
+    Vector3f translation_offset_right = {0.008f,0.0225f,0.0225f};
+    translate_transform_local(left_hand_transform, translation_offset_left);
+    translate_transform_local(right_hand_transform, translation_offset_right);
+
+    const float scale = 0.01f;
     left_hand_transform.scale  = {scale, scale, scale};
     right_hand_transform.scale = {scale, scale, scale};
 
