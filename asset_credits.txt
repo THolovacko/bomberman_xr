@@ -8,7 +8,7 @@ From: https://sketchfab.com/3d-models/white-bomberman-84a99dc245194292abfcff1b7f
 Changed: I edited the materials.
 License: (CC Attribution)https://creativecommons.org/licenses/by/4.0/legalcode
 
---- Bomberman models ---
+--- Bomberman fire models ---
 From: https://sketchfab.com/3d-models/bomberman-fire-8e482145eeed419980fabf073fcb13c9
 Changed: Nothing.
 License: (CC Attribution) https://creativecommons.org/licenses/by/4.0/legalcode
