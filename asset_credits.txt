@@ -1,25 +1,10 @@
---- Block models ---
-From: https://sketchfab.com/3d-models/brick-block-super-mario-bros-c12a2715135b4f6a9816efdf90180a8c
-Changed: I edited the materials.
-License: (CC Attribution) https://creativecommons.org/licenses/by/4.0/legalcode
+"Bomberman Bomb" (https://skfb.ly/6SV8R) by zer0nim is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
+"white bomberman" (https://skfb.ly/ooWDF) by UrbanFoxGamer is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
+"Bomberman Fire" (https://skfb.ly/6SVqN) by zer0nim is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
+"Brick Block (Super Mario Bros)" (https://skfb.ly/6zQG9) by Yanez Designs is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
+"Block Rock" (https://skfb.ly/REFu) by bilgehan.korkmaz is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
 
---- Bomberman models ---
-From: https://sketchfab.com/3d-models/white-bomberman-84a99dc245194292abfcff1b7fb2afe6
-Changed: I edited the materials.
-License: (CC Attribution)https://creativecommons.org/licenses/by/4.0/legalcode
-
---- Bomberman fire models ---
-From: https://sketchfab.com/3d-models/bomberman-fire-8e482145eeed419980fabf073fcb13c9
-Changed: Nothing.
-License: (CC Attribution) https://creativecommons.org/licenses/by/4.0/legalcode
-
---- Bomb model ---
-From: https://sketchfab.com/3d-models/bomberman-bomb-4a109903cbd34bef9d48e427a2d4da78
-Changed: Nothing.
-License: (CC Attribution) https://creativecommons.org/licenses/by/4.0/legalcode
-
---- Audio Assets ---
-From: https://www.sounds-resource.com/nintendo_switch/superbombermanr/
+Audio assets from https://www.sounds-resource.com/nintendo_switch/superbombermanr/
 
 
 Creative Commons Attribution 4.0 International Public License

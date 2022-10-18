@@ -82,7 +82,7 @@ struct Bomb {
 
   void init() {
     this->orientation = identity_orientation;
-    //this->position = {1.0f,0.0f,0.0f};
+    this->position = {1.0f,0.0f,0.0f};
 
     this->material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/bomb.png");
     create_graphics_mesh_instance_array_from_glb("assets/models/bomb.glb", this->mesh_instance_array);
@@ -104,7 +104,7 @@ struct Fire {
 
   void init() {
     this->orientation = identity_orientation;
-    //this->position = {0.0f,1.0f,0.0f};
+    this->position = {0.0f,1.0f,0.0f};
 
     this->material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/fire.png");
     create_graphics_skin_from_glb("assets/models/fire.glb", this->skin);
@@ -130,7 +130,7 @@ struct BrickBlock {
 
   void init() {
     this->orientation = identity_orientation;
-    //this->position = {-1.0f,0.0f,0.0f};
+    this->position = {-1.0f,0.0f,0.0f};
 
     this->material_id  = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/brick_texture.png");
     this->material_id2 = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, 0.0f, 0.8f);
@@ -140,9 +140,54 @@ struct BrickBlock {
   void update() {
     Transform transform = {this->position,this->orientation,{0.0001125f,0.0001125f,0.045f}};
     update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id, uint32_t(-1), 0);
-    for (uint32_t i=0; i < this->mesh_instance_array.size; ++i) update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id2, uint32_t(-1), 1);
+    //for (uint32_t i=0; i < this->mesh_instance_array.size; ++i) update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id2, uint32_t(-1), 1);
+    update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id2, uint32_t(-1), 1);
   }
 };
+
+struct StoneBlock {
+  Vector3f position;
+  Quaternionf orientation;
+  uint32_t material_id;
+  GraphicsMeshInstanceArray mesh_instance_array;
+
+  void init() {
+    this->orientation = identity_orientation;
+    this->position = {-1.0f,0.0f,0.0f};
+
+    this->material_id  = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/block_rock.jpeg");
+    create_graphics_mesh_instance_array_from_glb("assets/models/block_rock.glb", this->mesh_instance_array);
+  }
+
+  void update() {
+    Transform transform = {this->position,this->orientation,{0.06f,0.06f,0.06f}};
+    update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id, uint32_t(-1), 0);
+    for (uint32_t i=0; i < this->mesh_instance_array.size; ++i) update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id, uint32_t(-1), i);
+  }
+};
+
+struct FloorWallBlock {
+  Vector3f position;
+  Quaternionf orientation;
+  uint32_t material_id;
+  GraphicsMeshInstanceArray mesh_instance_array;
+
+  void init() {
+    this->orientation = identity_orientation;
+    this->position = {0.0f,0.0f,0.0f};
+
+    this->material_id = create_graphics_material(Vector4f{0.0f, 1.0f, 0.0f, 1.0f}, 0.0f, 0.8f);
+    create_graphics_mesh_instance_array_from_glb("assets/models/block.glb", this->mesh_instance_array);
+  }
+
+  void update() {
+    Transform transform = {this->position,this->orientation,{0.001f,0.001f,0.001f}};
+    update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id, uint32_t(-1), 0);
+    for (uint32_t i=0; i < this->mesh_instance_array.size; ++i) update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id, uint32_t(-1), i);
+  }
+};
+
+
 
 
 HandControllers* hands = new HandControllers();
@@ -150,6 +195,8 @@ BomberMan* test_man    = new BomberMan();
 Bomb* test_bomb        = new Bomb();
 Fire* test_fire        = new Fire();
 BrickBlock* test_brick = new BrickBlock();
+StoneBlock* test_stone = new StoneBlock();
+FloorWallBlock* test_floor = new FloorWallBlock();
 
 void head_pose_dependent_sim() {
   hands->update();
@@ -170,6 +217,8 @@ void SimulationState::init() {
 
   test_bomb->init();
   test_brick->init();
+  test_stone->init();
+  test_floor->init();
 }
 
 void SimulationState::update() {
@@ -180,6 +229,8 @@ void SimulationState::update() {
   test_fire->update();
   test_bomb->update();
   test_brick->update();
+  test_stone->update();
+  test_floor->update();
 
   if (input_state.left_hand_select) {
     DEBUG_LOG("left hand select\n");
