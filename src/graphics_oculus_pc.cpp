@@ -106,7 +106,7 @@ struct GlobalUniformBufferObject {
 };
 
 struct MaterialUniformBufferObject {
-  static constexpr uint32_t max_count = 8;  // this is also hardcoded in fragment shader
+  static constexpr uint32_t max_count = 16;  // this is also hardcoded in fragment shader
 
   GraphicsMaterial materials[max_count];
 };
@@ -2335,7 +2335,7 @@ bool init_graphics() {
 
   for (uint32_t i=0; i < vulkan_max_frames_in_flight; ++i) {
     VkInstanceBuffer* instance_buffer = new VkInstanceBuffer;
-    vulkan_instance_buffers[i] = create_vk_instance_buffer(100, instance_buffer);
+    vulkan_instance_buffers[i] = create_vk_instance_buffer(GraphicsMeshInstances::max_count, instance_buffer);
   }
 
   // if cannot use SRGB format for base color then need to handle gamma correction in fragment shaders

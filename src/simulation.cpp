@@ -130,7 +130,7 @@ struct BrickBlock {
 
   void init() {
     this->orientation = identity_orientation;
-    this->position = {-1.0f,0.0f,0.0f};
+    this->position = {0.0f,0.5f,0.0f};
 
     this->material_id  = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/brick_texture.png");
     this->material_id2 = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, 0.0f, 0.8f);
@@ -140,7 +140,6 @@ struct BrickBlock {
   void update() {
     Transform transform = {this->position,this->orientation,{0.0001125f,0.0001125f,0.045f}};
     update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id, uint32_t(-1), 0);
-    //for (uint32_t i=0; i < this->mesh_instance_array.size; ++i) update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id2, uint32_t(-1), 1);
     update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id2, uint32_t(-1), 1);
   }
 };
@@ -172,14 +171,6 @@ struct FloorWallBlock {
   uint32_t material_id;
   GraphicsMeshInstanceArray mesh_instance_array;
 
-  void init() {
-    this->orientation = identity_orientation;
-    this->position = {0.0f,0.0f,0.0f};
-
-    this->material_id = create_graphics_material(Vector4f{0.0f, 1.0f, 0.0f, 1.0f}, 0.0f, 0.8f);
-    create_graphics_mesh_instance_array_from_glb("assets/models/block.glb", this->mesh_instance_array);
-  }
-
   void update() {
     Transform transform = {this->position,this->orientation,{0.001f,0.001f,0.001f}};
     update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id, uint32_t(-1), 0);
@@ -187,7 +178,49 @@ struct FloorWallBlock {
   }
 };
 
+struct Board {
+  Vector3f first_block_position = {0.0f, 0.0f, 0.0f}; // position of top left floor block
+  const float block_offset = 0.109f;
+  static constexpr size_t floor_wall_block_count = 247; // 15 height and 13 width
+  FloorWallBlock floor_wall_blocks[floor_wall_block_count];
+  //Fire           all_fire[floor_wall_block_count];
+  //StoneBlock     stones[floor_wall_block_count];
+  //BrickBlock     bricks[floor_wall_block_count];
 
+  uint32_t wall_material_id;
+  uint32_t floor_1_material_id;
+  uint32_t floor_2_material_id;
+  uint32_t brick_material_id;
+  uint32_t stone_material_id;
+
+  void init() {
+    this->wall_material_id = create_graphics_material(Vector4f{0.0f, 1.0f, 0.0f, 1.0f}, 0.0f, 0.8f);
+    this->floor_1_material_id = create_graphics_material(Vector4f{1.0f, 0.0f, 0.0f, 1.0f}, 0.0f, 0.8f);
+    //this->floor_2_material_id = create_graphics_material(Vector4f{0.0f, 1.0f, 0.0f, 1.0f}, 0.0f, 0.8f);
+    //this->brick_material_id = create_graphics_material(Vector4f{0.0f, 1.0f, 0.0f, 1.0f}, 0.0f, 0.8f);
+    //this->stone_material_id = create_graphics_material(Vector4f{0.0f, 1.0f, 0.0f, 1.0f}, 0.0f, 0.8f);
+
+    for (size_t board_index=0; board_index < std::size(floor_wall_blocks); board_index += 2) {
+      floor_wall_blocks[board_index].orientation = identity_orientation;
+      floor_wall_blocks[board_index].position    = { first_block_position.x + (board_index * block_offset), first_block_position.y, first_block_position.z };
+      floor_wall_blocks[board_index].material_id = wall_material_id;
+      create_graphics_mesh_instance_array_from_glb("assets/models/block.glb", floor_wall_blocks[board_index].mesh_instance_array);
+    }
+
+    for (size_t board_index=1; board_index < std::size(floor_wall_blocks); board_index += 2) {
+      floor_wall_blocks[board_index].orientation = identity_orientation;
+      floor_wall_blocks[board_index].position    = { first_block_position.x + (board_index * block_offset), first_block_position.y, first_block_position.z };
+      floor_wall_blocks[board_index].material_id = floor_1_material_id;
+      create_graphics_mesh_instance_array_from_glb("assets/models/block.glb", floor_wall_blocks[board_index].mesh_instance_array);
+    }
+  }
+
+  void update() {
+    for (size_t board_index=0; board_index < std::size(floor_wall_blocks); ++board_index) {
+      floor_wall_blocks[board_index].update();
+    }
+  }
+};
 
 
 HandControllers* hands = new HandControllers();
@@ -196,7 +229,7 @@ Bomb* test_bomb        = new Bomb();
 Fire* test_fire        = new Fire();
 BrickBlock* test_brick = new BrickBlock();
 StoneBlock* test_stone = new StoneBlock();
-FloorWallBlock* test_floor = new FloorWallBlock();
+Board*      board      = new Board();
 
 void head_pose_dependent_sim() {
   hands->update();
@@ -218,7 +251,7 @@ void SimulationState::init() {
   test_bomb->init();
   test_brick->init();
   test_stone->init();
-  test_floor->init();
+  board->init();
 }
 
 void SimulationState::update() {
@@ -230,7 +263,7 @@ void SimulationState::update() {
   test_bomb->update();
   test_brick->update();
   test_stone->update();
-  test_floor->update();
+  board->update();
 
   if (input_state.left_hand_select) {
     DEBUG_LOG("left hand select\n");

@@ -16,7 +16,7 @@ layout(binding = 0) uniform sampler2DArray base_color_map_array;
 
 layout(location = 0) out vec4 out_frag_color;
 
-const uint  max_material_count = 8;
+const uint  max_material_count = 16;
 const float minimum_roughness  = 0.025;
 const vec3  F0                 = vec3(0.04);
 const float PI                 = 3.141592653589;
