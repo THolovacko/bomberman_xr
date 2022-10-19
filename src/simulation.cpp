@@ -180,8 +180,10 @@ struct FloorWallBlock {
 
 struct Board {
   Vector3f first_block_position = {0.0f, 0.0f, 0.0f}; // position of top left floor block
-  const float block_offset = 0.109f;
-  static constexpr size_t floor_wall_block_count = 247; // 15 height and 13 width
+  const float block_offset_x = 0.105f;
+  const float block_offset_y = 0.107f;
+  const float block_offset_z = 0.1045f;
+  static constexpr size_t floor_wall_block_count = 247; // 13 height and 15 width
   FloorWallBlock floor_wall_blocks[floor_wall_block_count];
   //Fire           all_fire[floor_wall_block_count];
   //StoneBlock     stones[floor_wall_block_count];
@@ -194,30 +196,88 @@ struct Board {
   uint32_t stone_material_id;
 
   void init() {
-    this->wall_material_id = create_graphics_material(Vector4f{0.0f, 1.0f, 0.0f, 1.0f}, 0.0f, 0.8f);
+    this->wall_material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, 0.0f, 0.8f);
     this->floor_1_material_id = create_graphics_material(Vector4f{1.0f, 0.0f, 0.0f, 1.0f}, 0.0f, 0.8f);
-    //this->floor_2_material_id = create_graphics_material(Vector4f{0.0f, 1.0f, 0.0f, 1.0f}, 0.0f, 0.8f);
+    this->floor_2_material_id = create_graphics_material(Vector4f{0.0f, 1.0f, 0.0f, 1.0f}, 0.0f, 0.8f);
     //this->brick_material_id = create_graphics_material(Vector4f{0.0f, 1.0f, 0.0f, 1.0f}, 0.0f, 0.8f);
     //this->stone_material_id = create_graphics_material(Vector4f{0.0f, 1.0f, 0.0f, 1.0f}, 0.0f, 0.8f);
 
-    for (size_t board_index=0; board_index < std::size(floor_wall_blocks); board_index += 2) {
-      floor_wall_blocks[board_index].orientation = identity_orientation;
-      floor_wall_blocks[board_index].position    = { first_block_position.x + (board_index * block_offset), first_block_position.y, first_block_position.z };
-      floor_wall_blocks[board_index].material_id = wall_material_id;
-      create_graphics_mesh_instance_array_from_glb("assets/models/block.glb", floor_wall_blocks[board_index].mesh_instance_array);
+    size_t floor_wall_blocks_index = 0;
+
+    /* generate walls */
+    const Vector3f top_right_block_position = { first_block_position.x + (14.0f * block_offset_x), first_block_position.y, first_block_position.z };
+    const Vector3f bottom_left_block_position = { first_block_position.x, first_block_position.y, first_block_position.z + (12.0f * block_offset_z) };
+    for (size_t i=0; i < 15; ++i) {
+      floor_wall_blocks[floor_wall_blocks_index].orientation = identity_orientation;
+      floor_wall_blocks[floor_wall_blocks_index].position    = { first_block_position.x + ((float)i * block_offset_x), first_block_position.y, first_block_position.z };
+      floor_wall_blocks[floor_wall_blocks_index].material_id = wall_material_id;
+      create_graphics_mesh_instance_array_from_glb("assets/models/block.glb", floor_wall_blocks[floor_wall_blocks_index].mesh_instance_array);
+      ++floor_wall_blocks_index;
+
+      floor_wall_blocks[floor_wall_blocks_index].orientation = identity_orientation;
+      floor_wall_blocks[floor_wall_blocks_index].position    = { first_block_position.x + ((float)i * block_offset_x), first_block_position.y + block_offset_y, first_block_position.z };
+      floor_wall_blocks[floor_wall_blocks_index].material_id = wall_material_id;
+      create_graphics_mesh_instance_array_from_glb("assets/models/block.glb", floor_wall_blocks[floor_wall_blocks_index].mesh_instance_array);
+      ++floor_wall_blocks_index;
+    }
+    for (size_t i=1; i < 13; ++i) {
+      floor_wall_blocks[floor_wall_blocks_index].orientation = identity_orientation;
+      floor_wall_blocks[floor_wall_blocks_index].position    = { first_block_position.x, first_block_position.y, first_block_position.z + (i * block_offset_z) };
+      floor_wall_blocks[floor_wall_blocks_index].material_id = wall_material_id;
+      create_graphics_mesh_instance_array_from_glb("assets/models/block.glb", floor_wall_blocks[floor_wall_blocks_index].mesh_instance_array);
+      ++floor_wall_blocks_index;
+
+      floor_wall_blocks[floor_wall_blocks_index].orientation = identity_orientation;
+      floor_wall_blocks[floor_wall_blocks_index].position    = { first_block_position.x, first_block_position.y + block_offset_y, first_block_position.z + ((float)i * block_offset_z) };
+      floor_wall_blocks[floor_wall_blocks_index].material_id = wall_material_id;
+      create_graphics_mesh_instance_array_from_glb("assets/models/block.glb", floor_wall_blocks[floor_wall_blocks_index].mesh_instance_array);
+      ++floor_wall_blocks_index;
+    }
+    for (size_t i=1; i < 13; ++i) {
+      floor_wall_blocks[floor_wall_blocks_index].orientation = identity_orientation;
+      floor_wall_blocks[floor_wall_blocks_index].position    = { top_right_block_position.x, top_right_block_position.y, top_right_block_position.z + ((float)i * block_offset_z) };
+      floor_wall_blocks[floor_wall_blocks_index].material_id = wall_material_id;
+      create_graphics_mesh_instance_array_from_glb("assets/models/block.glb", floor_wall_blocks[floor_wall_blocks_index].mesh_instance_array);
+      ++floor_wall_blocks_index;
+
+      floor_wall_blocks[floor_wall_blocks_index].orientation = identity_orientation;
+      floor_wall_blocks[floor_wall_blocks_index].position    = { top_right_block_position.x, top_right_block_position.y + block_offset_y, top_right_block_position.z + ((float)i * block_offset_z) };
+      floor_wall_blocks[floor_wall_blocks_index].material_id = wall_material_id;
+      create_graphics_mesh_instance_array_from_glb("assets/models/block.glb", floor_wall_blocks[floor_wall_blocks_index].mesh_instance_array);
+      ++floor_wall_blocks_index;
+    }
+    for (size_t i=1; i < 14; ++i) {
+      floor_wall_blocks[floor_wall_blocks_index].orientation = identity_orientation;
+      floor_wall_blocks[floor_wall_blocks_index].position    = { bottom_left_block_position.x + ((float)i * block_offset_x), bottom_left_block_position.y, bottom_left_block_position.z };
+      floor_wall_blocks[floor_wall_blocks_index].material_id = wall_material_id;
+      create_graphics_mesh_instance_array_from_glb("assets/models/block.glb", floor_wall_blocks[floor_wall_blocks_index].mesh_instance_array);
+      ++floor_wall_blocks_index;
+
+      floor_wall_blocks[floor_wall_blocks_index].orientation = identity_orientation;
+      floor_wall_blocks[floor_wall_blocks_index].position    = { bottom_left_block_position.x + ((float)i * block_offset_x), bottom_left_block_position.y + block_offset_y, bottom_left_block_position.z };
+      floor_wall_blocks[floor_wall_blocks_index].material_id = wall_material_id;
+      create_graphics_mesh_instance_array_from_glb("assets/models/block.glb", floor_wall_blocks[floor_wall_blocks_index].mesh_instance_array);
+      ++floor_wall_blocks_index;
     }
 
-    for (size_t board_index=1; board_index < std::size(floor_wall_blocks); board_index += 2) {
-      floor_wall_blocks[board_index].orientation = identity_orientation;
-      floor_wall_blocks[board_index].position    = { first_block_position.x + (board_index * block_offset), first_block_position.y, first_block_position.z };
-      floor_wall_blocks[board_index].material_id = floor_1_material_id;
-      create_graphics_mesh_instance_array_from_glb("assets/models/block.glb", floor_wall_blocks[board_index].mesh_instance_array);
+    /* generate floor */
+    const size_t floor_row_count    = 11;
+    const size_t floor_column_count = 13;
+    const Vector3f first_floor_position = { first_block_position.x + block_offset_x, first_block_position.y, first_block_position.z + block_offset_z };
+    for (size_t row_index=0; row_index < floor_row_count; ++row_index) {
+      for (size_t column_index=0; column_index < floor_column_count; ++column_index) {
+        floor_wall_blocks[floor_wall_blocks_index].orientation = identity_orientation;
+        floor_wall_blocks[floor_wall_blocks_index].position    = { first_floor_position.x + ((float)column_index * block_offset_x), first_floor_position.y, first_floor_position.z + ((float)row_index * block_offset_z) };
+        floor_wall_blocks[floor_wall_blocks_index].material_id = ( !(row_index % 2) == !(column_index % 2) ) ? floor_1_material_id : floor_2_material_id;
+        create_graphics_mesh_instance_array_from_glb("assets/models/block.glb", floor_wall_blocks[floor_wall_blocks_index].mesh_instance_array);
+        ++floor_wall_blocks_index;
+      }
     }
   }
 
   void update() {
-    for (size_t board_index=0; board_index < std::size(floor_wall_blocks); ++board_index) {
-      floor_wall_blocks[board_index].update();
+    for (size_t i=0; i < std::size(floor_wall_blocks); ++i) {
+      floor_wall_blocks[i].update();
     }
   }
 };
