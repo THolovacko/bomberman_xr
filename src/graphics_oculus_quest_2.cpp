@@ -2151,8 +2151,8 @@ bool init_graphics() {
     #endif
 
     VkPhysicalDeviceFeatures features{};
-    features.sampleRateShading             = VK_TRUE;
-    features.samplerAnisotropy             = VK_TRUE;
+    features.sampleRateShading = VK_TRUE;
+    features.samplerAnisotropy = VK_TRUE;
 
     VkPhysicalDeviceMultiviewFeaturesKHR multiview_features{};
     VkPhysicalDeviceFeatures2KHR features_query{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR};
