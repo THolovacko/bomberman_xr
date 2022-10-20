@@ -1,5 +1,6 @@
 #include "tom_engine.h"
 
+constexpr float global_scale = 0.5f;
 
 struct HandControllers {
   GraphicsMeshInstanceArray mesh_instance_array;
@@ -62,7 +63,7 @@ struct BomberMan {
   }
 
   void update() {
-    Transform transform = {this->position,this->orientation,{0.00035f,0.00035f,0.00035f}};
+    Transform transform = {this->position,this->orientation,{0.00035f * global_scale, 0.00035f * global_scale, 0.00035f * global_scale}};
 
     Vector3f x_axis = { 1.0f, 0.0f, 0.0f };
     rotate_transform_global(transform, 90.0f, x_axis);
@@ -80,6 +81,7 @@ struct Bomb {
   uint32_t sound_id;
   GraphicsMeshInstanceArray mesh_instance_array;
 
+  /*
   void init() {
     this->orientation = identity_orientation;
     this->position = {1.0f,0.0f,0.0f};
@@ -87,9 +89,10 @@ struct Bomb {
     this->material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/bomb.png");
     create_graphics_mesh_instance_array_from_glb("assets/models/bomb.glb", this->mesh_instance_array);
   }
+  */
 
   void update() {
-    Transform transform = {this->position,this->orientation,{0.1f,0.1f,0.1f}};
+    Transform transform = {this->position,this->orientation,{0.1f * global_scale, 0.1f * global_scale, 0.1f * global_scale}};
     for (uint32_t i=0; i < this->mesh_instance_array.size; ++i) update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id, uint32_t(-1), i);
   }
 };
@@ -102,6 +105,7 @@ struct Fire {
   GraphicsSkin skin;
   AnimationArray animations;
 
+  /*
   void init() {
     this->orientation = identity_orientation;
     this->position = {0.0f,1.0f,0.0f};
@@ -112,9 +116,10 @@ struct Fire {
     this->skin.update_all(material_id);
     this->animations = load_animations_from_glb_file("assets/models/fire.glb");
   }
+  */
 
   void update() {
-    Transform transform = {this->position,this->orientation,{0.1f,0.1f,0.1f}};
+    Transform transform = {this->position,this->orientation,{0.1f * global_scale, 0.1f * global_scale, 0.1f * global_scale}};
     Vector3f x_axis = { 1.0f, 0.0f, 0.0f };
     rotate_transform_global(transform, 90.0f, x_axis);
     this->skin.update(0, transform, material_id);
@@ -124,23 +129,14 @@ struct Fire {
 struct BrickBlock {
   Vector3f position;
   Quaternionf orientation;
-  uint32_t material_id;
-  uint32_t material_id2;
+  uint32_t material_id_0;
+  uint32_t material_id_1;
   GraphicsMeshInstanceArray mesh_instance_array;
 
-  void init() {
-    this->orientation = identity_orientation;
-    this->position = {0.0f,0.5f,0.0f};
-
-    this->material_id  = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/brick_texture.png");
-    this->material_id2 = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, 0.0f, 0.8f);
-    create_graphics_mesh_instance_array_from_glb("assets/models/brick_block.glb", this->mesh_instance_array);
-  }
-
   void update() {
-    Transform transform = {this->position,this->orientation,{0.0001125f,0.0001125f,0.045f}};
-    update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id, uint32_t(-1), 0);
-    update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id2, uint32_t(-1), 1);
+    Transform transform = {this->position,this->orientation,{0.0001125f * global_scale, 0.0001125f * global_scale, 0.045f * global_scale}};
+    update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id_0, uint32_t(-1), 0);
+    update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id_1, uint32_t(-1), 1);
   }
 };
 
@@ -150,16 +146,8 @@ struct StoneBlock {
   uint32_t material_id;
   GraphicsMeshInstanceArray mesh_instance_array;
 
-  void init() {
-    this->orientation = identity_orientation;
-    this->position = {-1.0f,0.0f,0.0f};
-
-    this->material_id  = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/block_rock.jpeg");
-    create_graphics_mesh_instance_array_from_glb("assets/models/block_rock.glb", this->mesh_instance_array);
-  }
-
   void update() {
-    Transform transform = {this->position,this->orientation,{0.06f,0.06f,0.06f}};
+    Transform transform = {this->position,this->orientation,{0.05f * global_scale, 0.05f * global_scale, 0.05f * global_scale}};
     update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id, uint32_t(-1), 0);
     for (uint32_t i=0; i < this->mesh_instance_array.size; ++i) update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id, uint32_t(-1), i);
   }
@@ -172,7 +160,7 @@ struct FloorWallBlock {
   GraphicsMeshInstanceArray mesh_instance_array;
 
   void update() {
-    Transform transform = {this->position,this->orientation,{0.001f,0.001f,0.001f}};
+    Transform transform = {this->position,this->orientation,{0.001f * global_scale, 0.001f * global_scale, 0.001f * global_scale}};
     update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id, uint32_t(-1), 0);
     for (uint32_t i=0; i < this->mesh_instance_array.size; ++i) update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id, uint32_t(-1), i);
   }
@@ -180,31 +168,51 @@ struct FloorWallBlock {
 
 struct Board {
   Vector3f first_block_position = {0.0f, 0.0f, 0.0f}; // position of top left floor block
-  const float block_offset_x = 0.105f;
-  const float block_offset_y = 0.107f;
-  const float block_offset_z = 0.1045f;
+  const float block_offset_x = 0.105f * global_scale;
+  const float block_offset_y = 0.107f * global_scale;
+  const float block_offset_z = 0.1045f * global_scale;
   static constexpr size_t floor_wall_block_count = 247; // 13 height and 15 width
   FloorWallBlock floor_wall_blocks[floor_wall_block_count];
-  //Fire           all_fire[floor_wall_block_count];
-  //StoneBlock     stones[floor_wall_block_count];
-  //BrickBlock     bricks[floor_wall_block_count];
+  StoneBlock all_stones[30];
+  BrickBlock all_bricks[143];
+  Bomb all_bombs[143];
+  //Fire all_fire[143];
 
   uint32_t wall_material_id;
   uint32_t floor_1_material_id;
   uint32_t floor_2_material_id;
-  uint32_t brick_material_id;
   uint32_t stone_material_id;
+  uint32_t brick_material_id_0;
+  uint32_t brick_material_id_1;
+  uint32_t bomb_material_id;
+  uint32_t fire_material_id;
+
+  void show_brick(const size_t tile_index) {
+  }
+
+  void hide_brick(const size_t tile_index) {
+  }
+
+  void show_bomb(const size_t tile_index) {
+  }
+
+  void hide_bomb(const size_t tile_index) {
+  }
 
   void init() {
-    this->wall_material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, 0.0f, 0.8f);
-    this->floor_1_material_id = create_graphics_material(Vector4f{1.0f, 0.0f, 0.0f, 1.0f}, 0.0f, 0.8f);
-    this->floor_2_material_id = create_graphics_material(Vector4f{0.0f, 1.0f, 0.0f, 1.0f}, 0.0f, 0.8f);
-    //this->brick_material_id = create_graphics_material(Vector4f{0.0f, 1.0f, 0.0f, 1.0f}, 0.0f, 0.8f);
-    //this->stone_material_id = create_graphics_material(Vector4f{0.0f, 1.0f, 0.0f, 1.0f}, 0.0f, 0.8f);
+    // TODO: review material properties
+    this->wall_material_id    = create_graphics_material(Vector4f{0.27843f, 0.27451f, 0.2549f, 1.0f}, 0.0f, 0.8f);
+    this->floor_1_material_id = create_graphics_material(Vector4f{0.22353f, 0.43922f, 0.1451f, 1.0f}, 0.0f, 0.8f);
+    this->floor_2_material_id = create_graphics_material(Vector4f{0.27843f, 0.52941f, 0.18039f, 1.0f}, 0.0f, 0.8f);
+    this->stone_material_id   = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/block_rock.jpeg");
+    this->brick_material_id_0 = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/brick_texture.png");
+    this->brick_material_id_1 = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, 0.0f, 0.8f);
+    this->bomb_material_id    = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/bomb.png");
+    this->fire_material_id    = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/fire.png");
 
     size_t floor_wall_blocks_index = 0;
 
-    /* generate walls */
+    /* create walls */
     const Vector3f top_right_block_position = { first_block_position.x + (14.0f * block_offset_x), first_block_position.y, first_block_position.z };
     const Vector3f bottom_left_block_position = { first_block_position.x, first_block_position.y, first_block_position.z + (12.0f * block_offset_z) };
     for (size_t i=0; i < 15; ++i) {
@@ -260,7 +268,7 @@ struct Board {
       ++floor_wall_blocks_index;
     }
 
-    /* generate floor */
+    /* create floor */
     const size_t floor_row_count    = 11;
     const size_t floor_column_count = 13;
     const Vector3f first_floor_position = { first_block_position.x + block_offset_x, first_block_position.y, first_block_position.z + block_offset_z };
@@ -273,22 +281,76 @@ struct Board {
         ++floor_wall_blocks_index;
       }
     }
+
+    /* create stones */
+    size_t stone_index = 0;
+    for (size_t row_index=1; row_index < floor_row_count; row_index+=2) {
+      for (size_t column_index=1; column_index < floor_column_count; column_index+=2) {
+        all_stones[stone_index].orientation = identity_orientation;
+        all_stones[stone_index].position    = { first_floor_position.x + ((float)column_index * block_offset_x), first_floor_position.y + block_offset_y, first_floor_position.z + ((float)row_index * block_offset_z) };
+        all_stones[stone_index].material_id = stone_material_id;
+        create_graphics_mesh_instance_array_from_glb("assets/models/block_rock.glb", all_stones[stone_index].mesh_instance_array);
+        ++stone_index;
+      }
+    }
+
+    /* create bricks and fire */
+    size_t tile_index = 0;
+    for (size_t row_index=0; row_index < floor_row_count; ++row_index) {
+      for (size_t column_index=0; column_index < floor_column_count; ++column_index) {
+        all_bricks[tile_index].orientation   = identity_orientation;
+        all_bricks[tile_index].position      = { first_floor_position.x + ((float)column_index * block_offset_x), first_floor_position.y + block_offset_y, first_floor_position.z + ((float)row_index * block_offset_z) };
+        all_bricks[tile_index].material_id_0 = brick_material_id_0;
+        all_bricks[tile_index].material_id_1 = brick_material_id_1;
+        create_graphics_mesh_instance_array_from_glb("assets/models/brick_block.glb", all_bricks[tile_index].mesh_instance_array);
+
+
+        all_bombs[tile_index].orientation   = identity_orientation;
+        all_bombs[tile_index].position      = { first_floor_position.x + ((float)column_index * block_offset_x), first_floor_position.y + block_offset_y, first_floor_position.z + ((float)row_index * block_offset_z) };
+        all_bombs[tile_index].material_id   = bomb_material_id;
+        create_graphics_mesh_instance_array_from_glb("assets/models/bomb.glb", all_bombs[tile_index].mesh_instance_array);
+
+        /*
+        all_fire[tile_index].orientation = identity_orientation;
+        all_fire[tile_index].position    = { first_floor_position.x + ((float)column_index * block_offset_x), first_floor_position.y + block_offset_y, first_floor_position.z + ((float)row_index * block_offset_z) };
+        all_fire[tile_index].material_id = fire_material_id;
+        create_graphics_skin_from_glb("assets/models/fire.glb", all_fire[tile_index].skin);
+        all_fire[tile_index].skin.update_all(all_fire[tile_index].material_id);
+        all_fire[tile_index].animations = load_animations_from_glb_file("assets/models/fire.glb");
+        all_fire[tile_index].skin.play_animation(all_fire[tile_index].animations.first_animation, true);
+        */
+
+        ++tile_index;
+      }
+    }
   }
 
   void update() {
     for (size_t i=0; i < std::size(floor_wall_blocks); ++i) {
       floor_wall_blocks[i].update();
     }
+    for (size_t i=0; i < std::size(all_stones); ++i) {
+      all_stones[i].update();
+    }
+    for (size_t i=0; i < std::size(all_bricks); ++i) {
+      all_bricks[i].update();
+    }
+
+    for (size_t i=0; i < std::size(all_bombs); ++i) {
+      all_bombs[i].update();
+    }
+
+    /*
+    for (size_t i=0; i < std::size(all_fire); ++i) {
+      all_fire[i].update();
+    }
+    */
   }
 };
 
 
 HandControllers* hands = new HandControllers();
 BomberMan* test_man    = new BomberMan();
-Bomb* test_bomb        = new Bomb();
-Fire* test_fire        = new Fire();
-BrickBlock* test_brick = new BrickBlock();
-StoneBlock* test_stone = new StoneBlock();
 Board*      board      = new Board();
 
 void head_pose_dependent_sim() {
@@ -305,12 +367,6 @@ void SimulationState::init() {
   test_man->init();
   test_man->skin.play_animation(test_man->animations.first_animation + 3, true);
 
-  test_fire->init();
-  test_fire->skin.play_animation(test_fire->animations.first_animation, true);
-
-  test_bomb->init();
-  test_brick->init();
-  test_stone->init();
   board->init();
 }
 
@@ -319,10 +375,6 @@ void SimulationState::update() {
 
   hands->update();
   test_man->update();
-  test_fire->update();
-  test_bomb->update();
-  test_brick->update();
-  test_stone->update();
   board->update();
 
   if (input_state.left_hand_select) {
