@@ -210,7 +210,7 @@ struct VkAnimations {
 
 struct VkSkeletons {
   typedef uint16_t Index;
-  static constexpr Index max_count = 32;
+  static constexpr Index max_count = 16;
 
   struct SourceFileIdData {
     Index first_skeleton_id = -1;
@@ -2206,8 +2206,8 @@ bool init_graphics() {
     current_vk_result = vkCreateCommandPool(vulkan_logical_device, &tmp_command_pool_info, nullptr, &vulkan_temporary_command_pool);
   }
 
-  const size_t draw_buffer_indices_count  = 1000000;
-  const size_t draw_buffer_vertices_count = 1000000;
+  const size_t draw_buffer_indices_count  = 131072;
+  const size_t draw_buffer_vertices_count = 131072;
   VkVertexBuffer* vertex_buffer           = new VkVertexBuffer;
   vulkan_all_meshes.draw_buffer = create_vk_vertex_buffer(draw_buffer_indices_count, draw_buffer_vertices_count, vertex_buffer);
   vulkan_all_meshes.source_file_path_to_id_data.reserve(VkMeshes::max_count);
@@ -2229,7 +2229,7 @@ bool init_graphics() {
 
   // if cannot use SRGB format for base color then need to handle gamma correction in fragment shaders
   vulkan_base_color_map_array = new VkTextureArray;
-  create_vk_texture_array(VK_FORMAT_R8G8B8A8_SRGB, 1024, 1024, calculate_mip_level_count(1024,1024), 10, vulkan_base_color_map_array);
+  create_vk_texture_array(VK_FORMAT_R8G8B8A8_SRGB, 1024, 1024, calculate_mip_level_count(1024,1024), 8, vulkan_base_color_map_array);
 
   {
     VkSamplerCreateInfo sampler_info{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};

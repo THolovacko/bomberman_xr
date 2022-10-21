@@ -71,7 +71,7 @@ struct VkInstanceBuffer {
   VkBuffer       staging_buffer;
   VkDeviceMemory staging_buffer_memory;
 
-  void update(const GraphicsMeshInstances::BufferData* instances, const size_t instance_count, const size_t instance_offset=0);
+  void update(const VkCommandBuffer& command_buffer, const GraphicsMeshInstances::BufferData* instances, const size_t instance_count, const size_t instance_offset=0);
 };
 
 struct VkTextureArray {
@@ -217,7 +217,7 @@ struct VkAnimations {
 
 struct VkSkeletons {
   typedef uint16_t Index;
-  static constexpr Index max_count = 32;
+  static constexpr Index max_count = 16;
 
   struct SourceFileIdData {
     Index first_skeleton_id = -1;
@@ -996,7 +996,7 @@ void VkVertexBuffer::update(const GraphicsIndex* indices, const size_t indices_c
   vulkan_end_then_submit_temporary_command_buffer(tmp_command_buffer);
 }
 
-void VkInstanceBuffer::update(const GraphicsMeshInstances::BufferData* instances, const size_t instance_count, const size_t instance_offset) {
+void VkInstanceBuffer::update(const VkCommandBuffer& command_buffer, const GraphicsMeshInstances::BufferData* instances, const size_t instance_count, const size_t instance_offset) {
   assert(instance_count > 0);
   assert(instances);
   assert( (instance_count + instance_offset) < this->max_instance_count );
@@ -1007,8 +1007,6 @@ void VkInstanceBuffer::update(const GraphicsMeshInstances::BufferData* instances
 
   const VkDeviceSize instances_buffer_offset = static_cast<std::byte*>(instances_memory) - static_cast<std::byte*>(this->mapped_memory);
 
-  VkCommandBuffer tmp_command_buffer = vulkan_begin_temporary_command_buffer();
-
   VkBufferMemoryBarrier instances_copy_buffer_barrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
   instances_copy_buffer_barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
   instances_copy_buffer_barrier.dstAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
@@ -1016,12 +1014,10 @@ void VkInstanceBuffer::update(const GraphicsMeshInstances::BufferData* instances
   instances_copy_buffer_barrier.offset        = instances_buffer_offset;
   instances_copy_buffer_barrier.size          = instances_size;
 
-  vkCmdPipelineBarrier(tmp_command_buffer, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 1, &instances_copy_buffer_barrier, 0, nullptr);
+  vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 1, &instances_copy_buffer_barrier, 0, nullptr);
 
   VkBufferCopy copy_info{ instances_buffer_offset, instances_buffer_offset, static_cast<VkDeviceSize>(instances_size) };
-  vkCmdCopyBuffer(tmp_command_buffer, this->staging_buffer, this->buffer, 1, &copy_info);
-
-  vulkan_end_then_submit_temporary_command_buffer(tmp_command_buffer);
+  vkCmdCopyBuffer(command_buffer, this->staging_buffer, this->buffer, 1, &copy_info);
 }
 
 void VkXrSwapchainContext::bind_render_target(const uint32_t image_index, VkRenderPassBeginInfo* const render_pass_begin_info) {
@@ -2317,8 +2313,8 @@ bool init_graphics() {
     vkCreateCommandPool(vulkan_logical_device, &tmp_command_pool_info, nullptr, &vulkan_temporary_command_pool);
   }
 
-  const size_t draw_buffer_indices_count  = 1000000;
-  const size_t draw_buffer_vertices_count = 1000000;
+  const size_t draw_buffer_indices_count  = 131072;
+  const size_t draw_buffer_vertices_count = 131072;
   VkVertexBuffer* vertex_buffer           = new VkVertexBuffer;
   vulkan_all_meshes.draw_buffer = create_vk_vertex_buffer(draw_buffer_indices_count, draw_buffer_vertices_count, vertex_buffer);
   vulkan_all_meshes.source_file_path_to_id_data.reserve(VkMeshes::max_count);
@@ -2340,7 +2336,7 @@ bool init_graphics() {
 
   // if cannot use SRGB format for base color then need to handle gamma correction in fragment shaders
   vulkan_base_color_map_array = new VkTextureArray;
-  create_vk_texture_array(VK_FORMAT_R8G8B8A8_SRGB, 1024, 1024, calculate_mip_level_count(1024,1024), 10, vulkan_base_color_map_array);
+  create_vk_texture_array(VK_FORMAT_R8G8B8A8_SRGB, 1024, 1024, calculate_mip_level_count(1024,1024), 8, vulkan_base_color_map_array);
 
   {
     VkSamplerCreateInfo sampler_info{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
@@ -2722,6 +2718,10 @@ void vulkan_render_xr_views(const std::vector<XrCompositionLayerProjectionView>&
   std::bitset<VkMeshes::max_count> is_mesh_draw_call_created_bits;
   VkIndexedDrawCall current_draw_call;
 
+  vkResetCommandBuffer(vulkan_xr_swapchain_context->command_buffers[current_frame], 0);
+  VkCommandBufferBeginInfo command_begin_info{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+  vkBeginCommandBuffer(vulkan_xr_swapchain_context->command_buffers[current_frame], &command_begin_info);
+
   for (uint32_t i=0; i < GraphicsMeshInstances::max_count; ++i) {
     const uint32_t current_mesh_id = graphics_render_thread_sim_state.mesh_instances.mesh_ids[i];
     if (current_mesh_id == VkMeshes::Index(-1)) {
@@ -2743,7 +2743,7 @@ void vulkan_render_xr_views(const std::vector<XrCompositionLayerProjectionView>&
           const GraphicsMeshInstances::DrawData& draw_data = graphics_render_thread_sim_state.mesh_instances.draw_data[current_mesh_instance_index];
 
           if (is_sphere_volume_visible(draw_data.cull_data.position,draw_data.cull_data.radius,camera_frustums[0]) || is_sphere_volume_visible(draw_data.cull_data.position,draw_data.cull_data.radius,camera_frustums[1])) {
-            vulkan_instance_buffers[current_frame]->update(&draw_data.buffer_data, 1, current_draw_call.first_instance + current_draw_call.instance_count);
+            vulkan_instance_buffers[current_frame]->update(vulkan_xr_swapchain_context->command_buffers[current_frame], &draw_data.buffer_data, 1, current_draw_call.first_instance + current_draw_call.instance_count);
             current_draw_call.instance_count += 1;
           }
         }
@@ -2757,10 +2757,6 @@ void vulkan_render_xr_views(const std::vector<XrCompositionLayerProjectionView>&
       is_mesh_draw_call_created_bits[current_mesh_id] = true;
     }
   }
-
-  vkResetCommandBuffer(vulkan_xr_swapchain_context->command_buffers[current_frame], 0);
-  VkCommandBufferBeginInfo command_begin_info{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-  vkBeginCommandBuffer(vulkan_xr_swapchain_context->command_buffers[current_frame], &command_begin_info);
 
   static VkClearValue clear_values[2];
   clear_values[0].color        = { {0.0f, 0.0f, 0.0f, 0.0f} };

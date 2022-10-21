@@ -1018,6 +1018,7 @@ int main()  // entry point is set as mainCRTStartup in linker settings for Deubg
 
     frame_rate_clock.stop();
     delta_time_seconds = frame_rate_clock.get_elapsed_time_seconds();
+    //printf("delta_time_seconds: %.6f\n", delta_time_seconds);
     frame_rate_clock.restart();
   }
 
