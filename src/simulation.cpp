@@ -1,4 +1,6 @@
 #include "tom_engine.h"
+#include <cstdlib>
+#include <time.h>
 
 constexpr float global_scale = 0.25f;
 
@@ -139,15 +141,20 @@ struct FloorWallBlock {
 };
 
 struct Board {
-  Vector3f first_block_position = {0.0f, 1.0f, 1.0f}; // position of top left floor block
-  Vector3f first_floor_position; // position of top left floor block
   const float block_offset = 0.1f * global_scale;
   static constexpr size_t floor_wall_block_count = 247; // 13 height and 15 width
+  enum class TileState : uint8_t { Stone, Brick, Bomb, Fire, Player_1, Player_2, Player_3, Player_4, Empty };
+  const size_t floor_row_count    = 11;
+  const size_t floor_column_count = 13;
+
+  Vector3f first_block_position = {0.0f, 1.0f, 1.0f}; // position of top left floor block
+  Vector3f first_floor_position; // position of top left floor block
   FloorWallBlock floor_wall_blocks[floor_wall_block_count];
   StoneBlock all_stones[30];
   BrickBlock all_bricks[143];
   Bomb all_bombs[143];
   Fire all_fire[143];
+  TileState tile_states[143];
 
   uint32_t wall_material_id;
   uint32_t floor_1_material_id;
@@ -157,6 +164,39 @@ struct Board {
   uint32_t brick_material_id_1;
   uint32_t bomb_material_id;
   uint32_t fire_material_id;
+
+  void reset_tile_states() {
+    for (size_t tile_index=0; tile_index < std::size(tile_states); ++tile_index) {
+      tile_states[tile_index] = TileState::Empty;
+    }
+
+    tile_states[0]   = TileState::Player_1;
+    tile_states[12]  = TileState::Player_2;
+    tile_states[130] = TileState::Player_3;
+    tile_states[142] = TileState::Player_4;
+
+    for (size_t row_index=1; row_index < floor_row_count; row_index+=2) {
+      for (size_t column_index=1; column_index < floor_column_count; column_index+=2) {
+        tile_states[(row_index * 13) + column_index] = TileState::Stone;
+      }
+    }
+
+    srand(static_cast<unsigned int>(time(NULL)));
+    for (size_t tile_index=0; tile_index < std::size(tile_states); ++tile_index) {
+      bool is_tile_in_player_spawn_space = (tile_index == 0) || (tile_index == 1) || (tile_index == 13) 
+                                        || (tile_index == 11) || (tile_index == 12) || (tile_index == 25) 
+                                        || (tile_index == 131) || (tile_index == 132) || (tile_index == 117)
+                                        || (tile_index == 130) || (tile_index == 142) || (tile_index == 143);
+      bool is_tile_stone = tile_states[tile_index] == TileState::Stone;
+      if ( is_tile_stone || is_tile_in_player_spawn_space ) continue;
+
+      int random_number = (rand() % 10 + 1);
+      if (random_number <= 7) {
+        tile_states[tile_index] = TileState::Brick;
+        show_brick(tile_index);
+      }
+    }
+  }
 
   void show_brick(const size_t tile_index) {
     const size_t row_index    = tile_index / 13;
@@ -272,8 +312,6 @@ struct Board {
     }
 
     /* create floor */
-    const size_t floor_row_count    = 11;
-    const size_t floor_column_count = 13;
     first_floor_position = { first_block_position.x + block_offset, first_block_position.y, first_block_position.z + block_offset };
     for (size_t row_index=0; row_index < floor_row_count; ++row_index) {
       for (size_t column_index=0; column_index < floor_column_count; ++column_index) {
@@ -322,6 +360,8 @@ struct Board {
         ++tile_index;
       }
     }
+
+    reset_tile_states();
   }
 
   void update_position(const Vector3f& position) {
