@@ -30,7 +30,7 @@ struct GraphicsMesh {
 };
 
 struct GraphicsMeshInstances {
-  static constexpr uint32_t max_count = 1024;
+  static constexpr uint32_t max_count = 2048;
 
   struct BufferData {
     Vector3f model_matrix_column_0;
