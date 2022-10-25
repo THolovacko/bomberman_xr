@@ -143,12 +143,18 @@ struct FloorWallBlock {
 struct Board {
   const float block_offset = 0.1f * global_scale;
   static constexpr size_t floor_wall_block_count = 247; // 13 height and 15 width
+  static constexpr Vector3f hide_position = { 1000000.0f, 1000000.0f, 1000000.0f };
   enum class TileState : uint8_t { Stone, Brick, Bomb, Fire, Player_1, Player_2, Player_3, Player_4, Empty };
   const size_t floor_row_count    = 11;
   const size_t floor_column_count = 13;
 
   Vector3f first_block_position = {0.0f, 1.0f, 1.0f}; // position of top left floor block
   Vector3f first_floor_position; // position of top left floor block
+  Vector3f player_1_start_position;
+  Vector3f player_2_start_position;
+  Vector3f player_3_start_position;
+  Vector3f player_4_start_position;
+
   FloorWallBlock floor_wall_blocks[floor_wall_block_count];
   StoneBlock all_stones[30];
   BrickBlock all_bricks[143];
@@ -170,10 +176,7 @@ struct Board {
       tile_states[tile_index] = TileState::Empty;
     }
 
-    tile_states[0]   = TileState::Player_1;
-    tile_states[12]  = TileState::Player_2;
-    tile_states[130] = TileState::Player_3;
-    tile_states[142] = TileState::Player_4;
+    for (size_t i=0; i < std::size(all_bricks); ++i) { hide_brick(i); }
 
     for (size_t row_index=1; row_index < floor_row_count; row_index+=2) {
       for (size_t column_index=1; column_index < floor_column_count; column_index+=2) {
@@ -181,12 +184,17 @@ struct Board {
       }
     }
 
+    tile_states[0]   = TileState::Player_1;
+    tile_states[12]  = TileState::Player_2;
+    tile_states[130] = TileState::Player_3;
+    tile_states[142] = TileState::Player_4;
+
     srand(static_cast<unsigned int>(time(NULL)));
     for (size_t tile_index=0; tile_index < std::size(tile_states); ++tile_index) {
-      bool is_tile_in_player_spawn_space = (tile_index == 0) || (tile_index == 1) || (tile_index == 13) 
-                                        || (tile_index == 11) || (tile_index == 12) || (tile_index == 25) 
-                                        || (tile_index == 131) || (tile_index == 132) || (tile_index == 117)
-                                        || (tile_index == 130) || (tile_index == 142) || (tile_index == 143);
+      bool is_tile_in_player_spawn_space = (tile_index == 0)   || (tile_index == 1)   || (tile_index == 13)
+                                        || (tile_index == 11)  || (tile_index == 12)  || (tile_index == 25)
+                                        || (tile_index == 130) || (tile_index == 117) || (tile_index == 131)
+                                        || (tile_index == 129) || (tile_index == 141) || (tile_index == 142);
       bool is_tile_stone = tile_states[tile_index] == TileState::Stone;
       if ( is_tile_stone || is_tile_in_player_spawn_space ) continue;
 
@@ -206,7 +214,7 @@ struct Board {
   }
 
   void hide_brick(const size_t tile_index) {
-    all_bricks[tile_index].position = { 1000000.0f, 1000000.0f, 1000000.0f };
+    all_bricks[tile_index].position = Board::hide_position;
     all_bricks[tile_index].update();
   }
 
@@ -218,7 +226,7 @@ struct Board {
   }
 
   void hide_bomb(const size_t tile_index) {
-    all_bombs[tile_index].position = { 1000000.0f, 1000000.0f, 1000000.0f };
+    all_bombs[tile_index].position = Board::hide_position;
     all_bombs[tile_index].update();
   }
 
@@ -230,7 +238,7 @@ struct Board {
   }
 
   void hide_fire(const size_t tile_index) {
-    all_fire[tile_index].position = { 1000000.0f, 1000000.0f, 1000000.0f };
+    all_fire[tile_index].position = Board::hide_position;
     all_fire[tile_index].update();
   }
 
@@ -240,8 +248,8 @@ struct Board {
     this->floor_1_material_id = create_graphics_material(Vector4f{0.22353f, 0.43922f, 0.1451f, 1.0f}, 0.0f, 0.8f);
     this->floor_2_material_id = create_graphics_material(Vector4f{0.27843f, 0.52941f, 0.18039f, 1.0f}, 0.0f, 0.8f);
     this->stone_material_id   = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/block_rock.jpeg");
-    this->brick_material_id_0 = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/brick_texture.png");
-    this->brick_material_id_1 = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, 0.0f, 0.8f);
+    this->brick_material_id_0 = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/brick_texture_0.png");
+    this->brick_material_id_1 = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/brick_texture_1.png");
     this->bomb_material_id    = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/bomb.png");
     this->fire_material_id    = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/fire.jpeg");
 
@@ -361,10 +369,15 @@ struct Board {
       }
     }
 
+    player_1_start_position = { first_floor_position.x - (block_offset / 2.5f), first_block_position.y + (block_offset / 2.0f), first_floor_position.z };
+    player_2_start_position = { first_floor_position.x + (block_offset * 12.0f) - (block_offset / 2.5f), first_block_position.y + (block_offset / 2.0f), first_floor_position.z };
+    player_3_start_position = { first_floor_position.x - (block_offset / 2.5f), first_block_position.y + (block_offset / 2.0f), first_floor_position.z + (block_offset * 10.0f) };
+    player_4_start_position = { first_floor_position.x + (block_offset * 12.0f) - (block_offset / 2.5f), first_block_position.y + (block_offset / 2.0f), first_floor_position.z + (block_offset * 10.0f) };
+
     reset_tile_states();
   }
 
-  void update_position(const Vector3f& position) {
+  void move(const Vector3f& position) {
     this->first_block_position = position;
 
     size_t floor_wall_blocks_index = 0;
@@ -421,31 +434,38 @@ struct Board {
     size_t tile_index = 0;
     for (size_t row_index=0; row_index < floor_row_count; ++row_index) {
       for (size_t column_index=0; column_index < floor_column_count; ++column_index) {
-        all_bricks[tile_index].position = { first_floor_position.x + ((float)column_index * block_offset), first_floor_position.y + block_offset, first_floor_position.z + ((float)row_index * block_offset) };
-        all_bombs[tile_index].position  = { first_floor_position.x + ((float)column_index * block_offset), first_floor_position.y + block_offset, first_floor_position.z + ((float)row_index * block_offset) };
-        all_fire[tile_index].position   = { first_floor_position.x + ((float)column_index * block_offset), first_floor_position.y + block_offset, first_floor_position.z + ((float)row_index * block_offset) };
+        switch (tile_states[tile_index]) {
+          case TileState::Brick: {
+            all_bricks[tile_index].position = { first_floor_position.x + ((float)column_index * block_offset), first_floor_position.y + block_offset, first_floor_position.z + ((float)row_index * block_offset) };
+            all_bricks[tile_index].update();
+            break;
+          }
+          case TileState::Bomb: {
+            all_bombs[tile_index].position = { first_floor_position.x + ((float)column_index * block_offset), first_floor_position.y + (block_offset / 2.0f), first_floor_position.z + ((float)row_index * block_offset) };
+            all_bombs[tile_index].update();
+            break;
+          }
+          case TileState::Fire: {
+            all_fire[tile_index].position = { first_floor_position.x + ((float)column_index * block_offset), first_floor_position.y + (block_offset / 2.0f) - 0.005f, first_floor_position.z + ((float)row_index * block_offset) };
+            all_fire[tile_index].update();
+            break;
+          }
+        }
 
         ++tile_index;
       }
     }
 
+    player_1_start_position = { first_floor_position.x - (block_offset / 2.5f), first_block_position.y + (block_offset / 2.0f), first_floor_position.z };
+    player_2_start_position = { first_floor_position.x + (block_offset * 12.0f) - (block_offset / 2.5f), first_block_position.y + (block_offset / 2.0f), first_floor_position.z };
+    player_3_start_position = { first_floor_position.x - (block_offset / 2.5f), first_block_position.y + (block_offset / 2.0f), first_floor_position.z + (block_offset * 10.0f) };
+    player_4_start_position = { first_floor_position.x + (block_offset * 12.0f) - (block_offset / 2.5f), first_block_position.y + (block_offset / 2.0f), first_floor_position.z + (block_offset * 10.0f) };
+
     for (size_t i=0; i < std::size(floor_wall_blocks); ++i) {
       floor_wall_blocks[i].update();
     }
-    for (size_t i=0; i < std::size(all_bricks); ++i) {
-      all_bricks[i].update();
-    }
-
-    for (size_t i=0; i < std::size(all_bombs); ++i) {
-      all_bombs[i].update();
-    }
-
     for (size_t i=0; i < std::size(all_stones); ++i) {
       all_stones[i].update();
-    }
-
-    for (size_t i=0; i < std::size(all_fire); ++i) {
-      all_fire[i].update();
     }
   }
 
@@ -480,6 +500,7 @@ void SimulationState::init() {
   test_man->skin.play_animation(test_man->animations.first_animation + 3, true);
 
   board->init();
+  test_man->position = board->player_1_start_position;
 }
 
 void SimulationState::update() {
@@ -493,11 +514,10 @@ void SimulationState::update() {
     DEBUG_LOG("left hand select\n");
 
     //play_audio_source(test_man->sound_id);
-    //board->update_position(input_state.left_hand_transform.position);
-    static size_t test_index = 0;
-    //board->show_brick(test_index++);
-    board->show_fire(test_index++);
-    //board->show_bomb(test_index++);
+
+    board->move(input_state.left_hand_transform.position);
+
+    test_man->position = board->player_1_start_position;
   }
 
   if (input_state.right_hand_select) {
