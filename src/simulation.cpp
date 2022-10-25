@@ -51,12 +51,31 @@ struct BomberMan {
   uint32_t sound_id;
   GraphicsSkin skin;
   AnimationArray animations;
+  uint32_t player_id;
 
-  void init() {
+  void init(const uint32_t player_id) {
+    this->player_id = player_id;
     this->orientation = identity_orientation;
     this->position = {0.0f,0.0f,0.0f};
 
-    this->material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 1.0f, "assets/textures/bomberman.png");
+    switch (this->player_id) {
+      case 1: {
+        this->material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 1.0f, "assets/textures/bomberman.png");
+        break;
+      }
+      case 2: {
+        this->material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 1.0f, "assets/textures/bomberman_blue.png");
+        break;
+      }
+      case 3: {
+        this->material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 1.0f, "assets/textures/bomberman_red.png");
+        break;
+      }
+      case 4: {
+        this->material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 1.0f, "assets/textures/bomberman_black.png");
+        break;
+      }
+    }
     create_graphics_skin_from_glb("assets/models/bomberman.glb", this->skin);
 
     this->sound_id = create_audio_source("assets/sounds/white_bomberman_hurt.wav", 4.0f, 16.0f, 0.0f, 1.0f);
@@ -68,7 +87,12 @@ struct BomberMan {
     Transform transform = {this->position,this->orientation,{0.00035f * global_scale, 0.00035f * global_scale, 0.00035f * global_scale}};
 
     Vector3f x_axis = { 1.0f, 0.0f, 0.0f };
+    Vector3f y_axis = { 0.0f, 1.0f, 0.0f };
     rotate_transform_global(transform, 90.0f, x_axis);
+
+    if ( (player_id == 3) || ((player_id == 4)) ) {
+      //rotate_transform_global(transform, 180.0f, y_axis);
+    }
 
     update_audio_source(sound_id, position);
 
@@ -482,8 +506,11 @@ struct Board {
 
 
 HandControllers* hands = new HandControllers();
-BomberMan* test_man    = new BomberMan();
-Board*      board      = new Board();
+BomberMan* player_1    = new BomberMan();
+BomberMan* player_2    = new BomberMan();
+BomberMan* player_3    = new BomberMan();
+BomberMan* player_4    = new BomberMan();
+Board* board           = new Board();
 
 void head_pose_dependent_sim() {
   hands->update();
@@ -496,28 +523,46 @@ void SimulationState::init() {
   directional_light.update_color({1.0f, 1.0f, 1.0f});
   update_ambient_light_intensity(0.25f);
 
-  test_man->init();
-  test_man->skin.play_animation(test_man->animations.first_animation + 3, true);
+  player_1->init(1);
+  player_1->skin.play_animation(player_1->animations.first_animation + 0, true);
+
+  player_2->init(2);
+  player_2->skin.play_animation(player_2->animations.first_animation + 1, true);
+
+  player_3->init(3);
+  player_3->skin.play_animation(player_3->animations.first_animation + 2, true);
+
+  player_4->init(4);
+  player_4->skin.play_animation(player_4->animations.first_animation + 3, true);
 
   board->init();
-  test_man->position = board->player_1_start_position;
+  player_1->position = board->player_1_start_position;
+  player_2->position = board->player_2_start_position;
+  player_3->position = board->player_3_start_position;
+  player_4->position = board->player_4_start_position;
 }
 
 void SimulationState::update() {
   PROFILE_FUNCTION();
 
   hands->update();
-  test_man->update();
+  player_1->update();
+  player_2->update();
+  player_3->update();
+  player_4->update();
   board->update();
 
   if (input_state.left_hand_select) {
     DEBUG_LOG("left hand select\n");
 
-    //play_audio_source(test_man->sound_id);
+    //play_audio_source(player_1->sound_id);
 
     board->move(input_state.left_hand_transform.position);
 
-    test_man->position = board->player_1_start_position;
+    player_1->position = board->player_1_start_position;
+    player_2->position = board->player_2_start_position;
+    player_3->position = board->player_3_start_position;
+    player_4->position = board->player_4_start_position;
   }
 
   if (input_state.right_hand_select) {

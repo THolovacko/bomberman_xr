@@ -2336,7 +2336,7 @@ bool init_graphics() {
 
   // if cannot use SRGB format for base color then need to handle gamma correction in fragment shaders
   vulkan_base_color_map_array = new VkTextureArray;
-  create_vk_texture_array(VK_FORMAT_R8G8B8A8_SRGB, 1024, 1024, calculate_mip_level_count(1024,1024), 8, vulkan_base_color_map_array);
+  create_vk_texture_array(VK_FORMAT_R8G8B8A8_SRGB, 1024, 1024, calculate_mip_level_count(1024,1024), 16, vulkan_base_color_map_array);
 
   {
     VkSamplerCreateInfo sampler_info{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
