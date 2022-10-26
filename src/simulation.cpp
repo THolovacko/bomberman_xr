@@ -7,6 +7,9 @@ constexpr float global_scale = 0.25f;
 struct HandControllers {
   GraphicsMeshInstanceArray mesh_instance_array;
   uint32_t material_id;
+  Transform left_hand_transform  = input_state.left_hand_transform;
+  Transform right_hand_transform = input_state.right_hand_transform;
+  const float scale = 0.01f;
 
   void init() {
     this->material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.53f, "assets/textures/quest_2_controllers.png");
@@ -14,8 +17,8 @@ struct HandControllers {
   }
 
   void update() {
-    Transform left_hand_transform  = input_state.left_hand_transform;
-    Transform right_hand_transform = input_state.right_hand_transform;
+    left_hand_transform  = input_state.left_hand_transform;
+    right_hand_transform = input_state.right_hand_transform;
 
     Vector3f y_axis = { 0.0f,1.0f,0.0f };
     Vector3f x_axis = { 1.0f,0.0f,0.0f };
@@ -35,69 +38,12 @@ struct HandControllers {
     translate_transform_local(left_hand_transform, translation_offset_left);
     translate_transform_local(right_hand_transform, translation_offset_right);
 
-    const float scale = 0.01f;
     left_hand_transform.scale  = {scale, scale, scale};
     right_hand_transform.scale = {scale, scale, scale};
 
     update_graphics_mesh_instance_array(this->mesh_instance_array, left_hand_transform, material_id, uint32_t(-1), 0);
     update_graphics_mesh_instance_array(this->mesh_instance_array, right_hand_transform, material_id, uint32_t(-1), 1);
   };
-};
-
-struct BomberMan {
-  Vector3f position;
-  Quaternionf orientation;
-  uint32_t material_id;
-  uint32_t sound_id;
-  GraphicsSkin skin;
-  AnimationArray animations;
-  uint32_t player_id;
-
-  void init(const uint32_t player_id) {
-    this->player_id = player_id;
-    this->orientation = identity_orientation;
-    this->position = {0.0f,0.0f,0.0f};
-
-    switch (this->player_id) {
-      case 1: {
-        this->material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 1.0f, "assets/textures/bomberman.png");
-        break;
-      }
-      case 2: {
-        this->material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 1.0f, "assets/textures/bomberman_blue.png");
-        break;
-      }
-      case 3: {
-        this->material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 1.0f, "assets/textures/bomberman_red.png");
-        break;
-      }
-      case 4: {
-        this->material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 1.0f, "assets/textures/bomberman_black.png");
-        break;
-      }
-    }
-    create_graphics_skin_from_glb("assets/models/bomberman.glb", this->skin);
-
-    this->sound_id = create_audio_source("assets/sounds/white_bomberman_hurt.wav", 4.0f, 16.0f, 0.0f, 1.0f);
-    this->skin.update_all(material_id);
-    this->animations = load_animations_from_glb_file("assets/models/bomberman.glb");
-  }
-
-  void update() {
-    Transform transform = {this->position,this->orientation,{0.00035f * global_scale, 0.00035f * global_scale, 0.00035f * global_scale}};
-
-    Vector3f x_axis = { 1.0f, 0.0f, 0.0f };
-    Vector3f y_axis = { 0.0f, 1.0f, 0.0f };
-    rotate_transform_global(transform, 90.0f, x_axis);
-
-    if ( (player_id == 3) || ((player_id == 4)) ) {
-      //rotate_transform_global(transform, 180.0f, y_axis);
-    }
-
-    update_audio_source(sound_id, position);
-
-    this->skin.update(0, transform, material_id);
-  }
 };
 
 struct Bomb {
@@ -165,7 +111,7 @@ struct FloorWallBlock {
 };
 
 struct Board {
-  const float block_offset = 0.1f * global_scale;
+  static constexpr float block_offset = 0.1f * global_scale;
   static constexpr size_t floor_wall_block_count = 247; // 13 height and 15 width
   static constexpr Vector3f hide_position = { 1000000.0f, 1000000.0f, 1000000.0f };
   enum class TileState : uint8_t { Stone, Brick, Bomb, Fire, Player_1, Player_2, Player_3, Player_4, Empty };
@@ -266,16 +212,20 @@ struct Board {
     all_fire[tile_index].update();
   }
 
+  Vector3f calculate_player_1_start_position() { return {first_floor_position.x - (block_offset / 2.5f), first_block_position.y + (block_offset / 2.0f), first_floor_position.z}; }
+  Vector3f calculate_player_2_start_position() { return {first_floor_position.x + (block_offset * 12.0f) - (block_offset / 2.5f), first_block_position.y + (block_offset / 2.0f), first_floor_position.z}; }
+  Vector3f calculate_player_3_start_position() { return {first_floor_position.x - (block_offset / 2.5f), first_block_position.y + (block_offset / 2.0f), first_floor_position.z + (block_offset * 10.0f)}; }
+  Vector3f calculate_player_4_start_position() { return {first_floor_position.x + (block_offset * 12.0f) - (block_offset / 2.5f), first_block_position.y + (block_offset / 2.0f), first_floor_position.z + (block_offset * 10.0f)}; }
+
   void init() {
-    // TODO: review material properties
-    this->wall_material_id    = create_graphics_material(Vector4f{0.27843f, 0.27451f, 0.2549f, 1.0f}, 0.0f, 0.8f);
-    this->floor_1_material_id = create_graphics_material(Vector4f{0.22353f, 0.43922f, 0.1451f, 1.0f}, 0.0f, 0.8f);
-    this->floor_2_material_id = create_graphics_material(Vector4f{0.27843f, 0.52941f, 0.18039f, 1.0f}, 0.0f, 0.8f);
-    this->stone_material_id   = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/block_rock.jpeg");
-    this->brick_material_id_0 = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/brick_texture_0.png");
-    this->brick_material_id_1 = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/brick_texture_1.png");
-    this->bomb_material_id    = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/bomb.png");
-    this->fire_material_id    = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/fire.jpeg");
+    this->wall_material_id    = create_graphics_material(Vector4f{0.27843f, 0.27451f, 0.2549f, 1.0f}, 0.6f, 0.7f);
+    this->floor_1_material_id = create_graphics_material(Vector4f{0.22353f, 0.43922f, 0.1451f, 1.0f}, 0.0f, 1.0f);
+    this->floor_2_material_id = create_graphics_material(Vector4f{0.27843f, 0.52941f, 0.18039f, 1.0f}, 0.0f, 1.0f);
+    this->stone_material_id   = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.3f, 0.75f, "assets/textures/block_rock.jpeg");
+    this->brick_material_id_0 = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.85f, "assets/textures/brick_texture_0.png");
+    this->brick_material_id_1 = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.85f, "assets/textures/brick_texture_1.png");
+    this->bomb_material_id    = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.2f, 0.9f, "assets/textures/bomb.png");
+    this->fire_material_id    = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.6f, "assets/textures/fire.jpeg");
 
     size_t floor_wall_blocks_index = 0;
 
@@ -393,10 +343,10 @@ struct Board {
       }
     }
 
-    player_1_start_position = { first_floor_position.x - (block_offset / 2.5f), first_block_position.y + (block_offset / 2.0f), first_floor_position.z };
-    player_2_start_position = { first_floor_position.x + (block_offset * 12.0f) - (block_offset / 2.5f), first_block_position.y + (block_offset / 2.0f), first_floor_position.z };
-    player_3_start_position = { first_floor_position.x - (block_offset / 2.5f), first_block_position.y + (block_offset / 2.0f), first_floor_position.z + (block_offset * 10.0f) };
-    player_4_start_position = { first_floor_position.x + (block_offset * 12.0f) - (block_offset / 2.5f), first_block_position.y + (block_offset / 2.0f), first_floor_position.z + (block_offset * 10.0f) };
+    player_1_start_position = calculate_player_1_start_position();
+    player_2_start_position = calculate_player_2_start_position();
+    player_3_start_position = calculate_player_3_start_position();
+    player_4_start_position = calculate_player_4_start_position();
 
     reset_tile_states();
   }
@@ -480,10 +430,10 @@ struct Board {
       }
     }
 
-    player_1_start_position = { first_floor_position.x - (block_offset / 2.5f), first_block_position.y + (block_offset / 2.0f), first_floor_position.z };
-    player_2_start_position = { first_floor_position.x + (block_offset * 12.0f) - (block_offset / 2.5f), first_block_position.y + (block_offset / 2.0f), first_floor_position.z };
-    player_3_start_position = { first_floor_position.x - (block_offset / 2.5f), first_block_position.y + (block_offset / 2.0f), first_floor_position.z + (block_offset * 10.0f) };
-    player_4_start_position = { first_floor_position.x + (block_offset * 12.0f) - (block_offset / 2.5f), first_block_position.y + (block_offset / 2.0f), first_floor_position.z + (block_offset * 10.0f) };
+    player_1_start_position = calculate_player_1_start_position();
+    player_2_start_position = calculate_player_2_start_position();
+    player_3_start_position = calculate_player_3_start_position();
+    player_4_start_position = calculate_player_4_start_position();
 
     for (size_t i=0; i < std::size(floor_wall_blocks); ++i) {
       floor_wall_blocks[i].update();
@@ -504,13 +454,91 @@ struct Board {
   }
 };
 
+struct Bomberman {
+  enum class GlobalDirection : uint8_t { Down, Up, Right, Left };
+
+  Transform transform;
+  uint32_t material_id;
+  uint32_t sound_id;
+  GraphicsSkin skin;
+  AnimationArray animations;
+  uint32_t player_id;
+  GlobalDirection current_direction;
+  GlobalDirection previous_direction;
+
+  void init(const uint32_t player_id) {
+    this->player_id             = player_id;
+    this->transform.orientation = identity_orientation;
+    this->transform.position    = {0.0f,0.0f,0.0f};
+    this->transform.scale       = {0.00035f * global_scale, 0.00035f * global_scale, 0.00035f * global_scale};
+    this->current_direction     = ( (this->player_id == 1) || (this->player_id == 2) ) ? GlobalDirection::Down : GlobalDirection::Up;
+
+    switch (this->player_id) {
+      case 1: {
+        this->material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 1.0f, "assets/textures/bomberman.png");
+        break;
+      }
+      case 2: {
+        this->material_id = create_graphics_material(Vector4f{1.0f, 0.0f, 0.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 1.0f, "assets/textures/bomberman.png");
+        break;
+      }
+      case 3: {
+        this->material_id = create_graphics_material(Vector4f{0.0f, 1.0f, 0.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 1.0f, "assets/textures/bomberman.png");
+        break;
+      }
+      case 4: {
+        this->material_id = create_graphics_material(Vector4f{0.0f, 0.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 1.0f, "assets/textures/bomberman.png");
+        break;
+      }
+    }
+    create_graphics_skin_from_glb("assets/models/bomberman.glb", this->skin);
+
+    this->sound_id = create_audio_source("assets/sounds/white_bomberman_hurt.wav", 4.0f, 16.0f, 0.0f, 1.0f);
+    this->skin.update_all(material_id);
+    this->animations = load_animations_from_glb_file("assets/models/bomberman.glb");
+
+    Vector3f x_axis = { 1.0f, 0.0f, 0.0f };
+    rotate_transform_global(this->transform, 90.0f, x_axis);
+  }
+
+  void update() {
+    Transform target_transform = {this->transform.position,this->transform.orientation, this->transform.scale};
+
+    if (this->current_direction != GlobalDirection::Down) {
+      Vector3f y_axis = { 0.0f, 1.0f, 0.0f };
+      switch (this->current_direction) {
+        case GlobalDirection::Up: {
+          rotate_transform_global(target_transform, 180.0f, y_axis);
+          target_transform.position.x += (Board::block_offset / 1.25f);
+          break;
+        }
+        case GlobalDirection::Left: {
+          rotate_transform_global(target_transform, 90.0f, y_axis);
+          target_transform.position.x += (Board::block_offset / 2.5f);
+          target_transform.position.z += (Board::block_offset / 2.5f);
+          break;
+        }
+        case GlobalDirection::Right: {
+          rotate_transform_global(target_transform, -90.0f, y_axis);
+          target_transform.position.x += (Board::block_offset / 2.5f);
+          target_transform.position.z -= (Board::block_offset / 2.5f);
+          break;
+        }
+      }
+    }
+
+    update_audio_source(sound_id, this->transform.position);
+
+    this->skin.update(0, target_transform, material_id);
+  }
+};
 
 HandControllers* hands = new HandControllers();
-BomberMan* player_1    = new BomberMan();
-BomberMan* player_2    = new BomberMan();
-BomberMan* player_3    = new BomberMan();
-BomberMan* player_4    = new BomberMan();
 Board* board           = new Board();
+Bomberman* player_1    = new Bomberman();
+Bomberman* player_2    = new Bomberman();
+Bomberman* player_3    = new Bomberman();
+Bomberman* player_4    = new Bomberman();
 
 void head_pose_dependent_sim() {
   hands->update();
@@ -524,22 +552,22 @@ void SimulationState::init() {
   update_ambient_light_intensity(0.25f);
 
   player_1->init(1);
-  player_1->skin.play_animation(player_1->animations.first_animation + 0, true);
+  player_1->skin.play_animation(player_1->animations.first_animation + 1, true);
 
   player_2->init(2);
   player_2->skin.play_animation(player_2->animations.first_animation + 1, true);
 
   player_3->init(3);
-  player_3->skin.play_animation(player_3->animations.first_animation + 2, true);
+  player_3->skin.play_animation(player_3->animations.first_animation + 1, true);
 
   player_4->init(4);
-  player_4->skin.play_animation(player_4->animations.first_animation + 3, true);
+  player_4->skin.play_animation(player_4->animations.first_animation + 1, true);
 
   board->init();
-  player_1->position = board->player_1_start_position;
-  player_2->position = board->player_2_start_position;
-  player_3->position = board->player_3_start_position;
-  player_4->position = board->player_4_start_position;
+  player_1->transform.position = board->player_1_start_position;
+  player_2->transform.position = board->player_2_start_position;
+  player_3->transform.position = board->player_3_start_position;
+  player_4->transform.position = board->player_4_start_position;
 }
 
 void SimulationState::update() {
@@ -558,11 +586,12 @@ void SimulationState::update() {
     //play_audio_source(player_1->sound_id);
 
     board->move(input_state.left_hand_transform.position);
+    player_1->transform.position = board->player_1_start_position;
+    player_2->transform.position = board->player_2_start_position;
+    player_3->transform.position = board->player_3_start_position;
+    player_4->transform.position = board->player_4_start_position;
 
-    player_1->position = board->player_1_start_position;
-    player_2->position = board->player_2_start_position;
-    player_3->position = board->player_3_start_position;
-    player_4->position = board->player_4_start_position;
+    //player_1->current_direction = Bomberman::GlobalDirection::Right;
   }
 
   if (input_state.right_hand_select) {
