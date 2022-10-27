@@ -1,6 +1,7 @@
 #include "tom_engine.h"
 #include <cstdlib>
 #include <time.h>
+#include <bitset>
 
 constexpr float global_scale = 0.25f;
 
@@ -114,7 +115,7 @@ struct Board {
   static constexpr float block_offset = 0.1f * global_scale;
   static constexpr size_t floor_wall_block_count = 247; // 13 height and 15 width
   static constexpr Vector3f hide_position = { 1000000.0f, 1000000.0f, 1000000.0f };
-  enum class TileState : uint8_t { Stone, Brick, Bomb, Fire, Player_1, Player_2, Player_3, Player_4, Empty };
+  enum class TileState : uint8_t { Stone, Brick, Bomb, Fire, Empty };
   const size_t floor_row_count    = 11;
   const size_t floor_column_count = 13;
 
@@ -153,11 +154,6 @@ struct Board {
         tile_states[(row_index * 13) + column_index] = TileState::Stone;
       }
     }
-
-    tile_states[0]   = TileState::Player_1;
-    tile_states[12]  = TileState::Player_2;
-    tile_states[130] = TileState::Player_3;
-    tile_states[142] = TileState::Player_4;
 
     srand(static_cast<unsigned int>(time(NULL)));
     for (size_t tile_index=0; tile_index < std::size(tile_states); ++tile_index) {
@@ -533,12 +529,111 @@ struct Bomberman {
   }
 };
 
-HandControllers* hands = new HandControllers();
-Board* board           = new Board();
-Bomberman* player_1    = new Bomberman();
-Bomberman* player_2    = new Bomberman();
-Bomberman* player_3    = new Bomberman();
-Bomberman* player_4    = new Bomberman();
+struct MovementSystem {
+  struct PlayerMovementState {
+    Vector3f initial_position;
+    Vector3f target_position;
+    uint32_t current_tile_index;
+    uint32_t target_tile_index;
+    Bomberman* player;
+  };
+
+  Board* board_state;
+  std::bitset<4> is_player_moving_bits;
+  PlayerMovementState player_movement_states[4];
+
+  void reset(Board* const board_state, Bomberman* const player_1, Bomberman* const player_2, Bomberman* const player_3, Bomberman* const player_4) {
+    this->board_state = board_state;
+
+    player_movement_states[0].player = player_1;
+    player_movement_states[1].player = player_2;
+    player_movement_states[2].player = player_3;
+    player_movement_states[3].player = player_4;
+
+    player_movement_states[0].current_tile_index = 0;
+    player_movement_states[1].current_tile_index = 12;
+    player_movement_states[2].current_tile_index = 130;
+    player_movement_states[3].current_tile_index = 142;
+  }
+
+  void move_player(const uint32_t player_id, const Bomberman::GlobalDirection direction) {
+    const uint32_t player_index = player_id - 1;
+    if (is_player_moving_bits[player_index]) {
+      /*
+      if ( (movement_state.target_position.x - movement_state.initial_position.x) != 0.0f) {
+        //  TODO: handle chained moves
+        //const float tmp = (movement_state.target_position.x - player_movement_states[i]->player.transform.position.x)
+      }
+      */
+      return;
+    }
+    PlayerMovementState& movement_state = player_movement_states[player_index];
+
+    const size_t row_index    = movement_state.current_tile_index / 13;
+    const size_t column_index = movement_state.current_tile_index % 13;
+    uint32_t target_tile_index;
+    Vector3f position_offset = {0.0f, 0.0f, 0.0f};
+    if (direction == Bomberman::GlobalDirection::Up) {
+      if (row_index == 0) return;
+      target_tile_index = movement_state.current_tile_index - 13;
+      position_offset.z += board_state->Board::block_offset;
+    } else if (direction == Bomberman::GlobalDirection::Right) {
+      if (column_index == 12 ) return;
+      target_tile_index = movement_state.current_tile_index + 1;
+      position_offset.x += board_state->Board::block_offset;
+    } else if (direction == Bomberman::GlobalDirection::Left) {
+      if (column_index == 0 ) return;
+      target_tile_index = movement_state.current_tile_index - 1;
+      position_offset.x -= board_state->Board::block_offset;
+    } else if (direction == Bomberman::GlobalDirection::Down) {
+      if (row_index == 10) return;
+      target_tile_index = movement_state.current_tile_index + 13;
+      position_offset.z -= board_state->Board::block_offset;
+    }
+
+    if ( (board_state->tile_states[target_tile_index] == Board::TileState::Brick) || (board_state->tile_states[target_tile_index] == Board::TileState::Stone) ) return;
+
+    movement_state.target_tile_index          = target_tile_index;
+    movement_state.initial_position           = movement_state.player->transform.position;
+    movement_state.target_position            = movement_state.player->transform.position;
+    movement_state.player->previous_direction = movement_state.player->current_direction;
+    movement_state.player->current_direction  = direction;
+
+    is_player_moving_bits[player_index] = true;
+  }
+
+  void update() {
+    for (uint32_t i=0; i < 4; ++i) {
+      if (is_player_moving_bits[i]) {
+        Vector3f& current_position = player_movement_states[i].player->transform.position;
+        Vector3f velocity = { ((player_movement_states[i].target_position.x - current_position.x) * 2.0f) * delta_time_seconds, (player_movement_states[i].target_position.y - current_position.y) * delta_time_seconds, (player_movement_states[i].target_position.z - current_position.z) * delta_time_seconds };
+        current_position.x += velocity.x;
+        current_position.y += velocity.y;
+        current_position.z += velocity.z;
+
+        PlayerMovementState& movement_state = player_movement_states[i];
+        bool reached_destination = ( (velocity.x > 0.0f) && (current_position.x >= movement_state.target_position.x) ) ||
+                                   ( (velocity.x < 0.0f) && (current_position.x <= movement_state.target_position.x) ) ||
+                                   ( (velocity.y > 0.0f) && (current_position.y >= movement_state.target_position.y) ) ||
+                                   ( (velocity.y < 0.0f) && (current_position.y <= movement_state.target_position.y) );
+
+        if (reached_destination) {
+          is_player_moving_bits[i] = false;
+          player_movement_states[i].player->transform.position = movement_state.target_position;
+          movement_state.current_tile_index = movement_state.target_tile_index;
+        }
+      }
+    }
+  }
+};
+
+HandControllers* hands          = new HandControllers();
+Board* board                    = new Board();
+Bomberman* player_1             = new Bomberman();
+Bomberman* player_2             = new Bomberman();
+Bomberman* player_3             = new Bomberman();
+Bomberman* player_4             = new Bomberman();
+MovementSystem* movement_system = new MovementSystem();
 
 void head_pose_dependent_sim() {
   hands->update();
@@ -568,28 +663,34 @@ void SimulationState::init() {
   player_2->transform.position = board->player_2_start_position;
   player_3->transform.position = board->player_3_start_position;
   player_4->transform.position = board->player_4_start_position;
+
+  movement_system->reset(board, player_1, player_2, player_3, player_4);
 }
 
 void SimulationState::update() {
   PROFILE_FUNCTION();
 
-  hands->update();
-  player_1->update();
-  player_2->update();
-  player_3->update();
-  player_4->update();
-  board->update();
+  //play_audio_source(player_1->sound_id);
+
+  constexpr float movement_threshold = 0.5f;
+  if (input_state.move_player.x > movement_threshold) { // move right
+    movement_system->move_player(player_1->player_id, Bomberman::GlobalDirection::Right);
+  } else if ( input_state.move_player.x < (-1.0f * movement_threshold) ) {  // move left
+    movement_system->move_player(player_1->player_id, Bomberman::GlobalDirection::Left);
+  } else if ( input_state.move_player.y > movement_threshold ) {  // move up
+    movement_system->move_player(player_1->player_id, Bomberman::GlobalDirection::Up);
+  } else if ( input_state.move_player.y < (-1.0 * movement_threshold) ) {  // move down
+    movement_system->move_player(player_1->player_id, Bomberman::GlobalDirection::Down);
+  }
+
+  movement_system->update();
 
   if (input_state.move_board) {
-    //play_audio_source(player_1->sound_id);
-
     board->move(input_state.right_hand_transform.position);
     player_1->transform.position = board->player_1_start_position;
     player_2->transform.position = board->player_2_start_position;
     player_3->transform.position = board->player_3_start_position;
     player_4->transform.position = board->player_4_start_position;
-
-    //player_1->current_direction = Bomberman::GlobalDirection::Right;
   }
 
   if (input_state.exit || input_state.gamepad_exit) {
@@ -600,7 +701,14 @@ void SimulationState::update() {
     DEBUG_LOG("gamepad action button\n");
   }
 
-  //DEBUG_LOG("x: %.3f y: %.3f\n", input_state.move_player.x, input_state.move_player.y);
+  hands->update();
+  player_1->update();
+  player_2->update();
+  player_3->update();
+  player_4->update();
+  board->update();
+
+
 }
 
 void SimulationState::exit() {
