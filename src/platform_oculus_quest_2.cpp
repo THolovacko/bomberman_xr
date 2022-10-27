@@ -41,14 +41,22 @@ struct XrSwapchainContext {
 struct XrInputState {
   XrActionSet action_set;
   XrAction    pose_action;
-  XrAction    select_action;
+  XrAction    action_button_action;
+  XrAction    move_board_action;
+  XrAction    exit_action;
+  XrAction    move_player_action;
   XrPath      hand_subaction_paths[2];
   XrPath      gamepad_subaction_path;
   XrSpace     hand_spaces[2];
   XrPosef     hand_poses[2];
   XrBool32    render_hands[2];
-  XrBool32    hand_selects[2];
-  XrBool32    gamepad_select;
+  XrBool32    action_button;
+  XrBool32    move_board;
+  XrBool32    exit;
+  Vector2f    move_player;
+  XrBool32    gamepad_action_button;
+  XrBool32    gamepad_exit;
+  XrVector2f  gamepad_move_player;
 };
 
 struct AndroidUserData {
@@ -587,9 +595,30 @@ bool init_platform() {
     action_info.countSubactionPaths = static_cast<uint32_t>( std::size(all_subaction_paths) );
     action_info.subactionPaths      = all_subaction_paths;
     action_info.actionType          = XR_ACTION_TYPE_BOOLEAN_INPUT;
-    strcpy(action_info.actionName,          "select");
-    strcpy(action_info.localizedActionName, "Select");
-    current_xr_result = xrCreateAction(platform_xr_input.action_set, &action_info, &platform_xr_input.select_action);
+    strcpy(action_info.actionName,          "action");
+    strcpy(action_info.localizedActionName, "Action");
+    current_xr_result = xrCreateAction(platform_xr_input.action_set, &action_info, &platform_xr_input.action_button_action);
+
+    action_info.countSubactionPaths = static_cast<uint32_t>( std::size(all_subaction_paths) );
+    action_info.subactionPaths      = platform_xr_input.hand_subaction_paths;
+    action_info.actionType          = XR_ACTION_TYPE_BOOLEAN_INPUT;
+    strcpy(action_info.actionName,          "move_board");
+    strcpy(action_info.localizedActionName, "Move Board");
+    current_xr_result = xrCreateAction(platform_xr_input.action_set, &action_info, &platform_xr_input.move_board_action);
+
+    action_info.countSubactionPaths = static_cast<uint32_t>( std::size(all_subaction_paths) );
+    action_info.subactionPaths      = all_subaction_paths;
+    action_info.actionType          = XR_ACTION_TYPE_BOOLEAN_INPUT;
+    strcpy(action_info.actionName,          "exit");
+    strcpy(action_info.localizedActionName, "Exit");
+    current_xr_result = xrCreateAction(platform_xr_input.action_set, &action_info, &platform_xr_input.exit_action);
+
+    action_info.countSubactionPaths = static_cast<uint32_t>( std::size(all_subaction_paths) );
+    action_info.subactionPaths      = all_subaction_paths;
+    action_info.actionType          = XR_ACTION_TYPE_VECTOR2F_INPUT;
+    strcpy(action_info.actionName,          "move_player");
+    strcpy(action_info.localizedActionName, "Move Player");
+    current_xr_result = xrCreateAction(platform_xr_input.action_set, &action_info, &platform_xr_input.move_player_action);
 
     for (int32_t i=0; i < 2; ++i) {
       XrActionSpaceCreateInfo action_space_info = {XR_TYPE_ACTION_SPACE_CREATE_INFO};
@@ -603,17 +632,24 @@ bool init_platform() {
     {
       XrPath profile_path;
       XrPath pose_paths[2];
-      XrPath select_paths[2];
-      xrStringToPath(platform_xr_instance, "/user/hand/left/input/grip/pose",     &pose_paths[0]);
-      xrStringToPath(platform_xr_instance, "/user/hand/right/input/grip/pose",    &pose_paths[1]);
-      xrStringToPath(platform_xr_instance, "/user/hand/left/input/x/click",       &select_paths[0]);
-      xrStringToPath(platform_xr_instance, "/user/hand/right/input/a/click",      &select_paths[1]);
+      XrPath action_button_path;
+      XrPath move_board_path;
+      XrPath exit_path;
+      XrPath move_player_path;
+      xrStringToPath(platform_xr_instance, "/user/hand/left/input/grip/pose",  &pose_paths[0]);
+      xrStringToPath(platform_xr_instance, "/user/hand/right/input/grip/pose", &pose_paths[1]);
+      xrStringToPath(platform_xr_instance, "/user/hand/right/input/a/click",   &action_button_path);
+      xrStringToPath(platform_xr_instance, "/user/hand/right/input/b/click",   &move_board_path);
+      xrStringToPath(platform_xr_instance, "/user/hand/left/input/y/click",    &exit_path);
+      xrStringToPath(platform_xr_instance, "/user/hand/left/input/thumbstick", &move_player_path);
       xrStringToPath(platform_xr_instance, "/interaction_profiles/oculus/touch_controller", &profile_path);
       XrActionSuggestedBinding action_bindings[] = {
-        { platform_xr_input.pose_action,   pose_paths[0]   },
-        { platform_xr_input.pose_action,   pose_paths[1]   },
-        { platform_xr_input.select_action, select_paths[0] },
-        { platform_xr_input.select_action, select_paths[1] }
+        { platform_xr_input.pose_action, pose_paths[0] },
+        { platform_xr_input.pose_action, pose_paths[1] },
+        { platform_xr_input.action_button_action, action_button_path },
+        { platform_xr_input.move_board_action, move_board_path },
+        { platform_xr_input.exit_action, exit_path },
+        { platform_xr_input.move_player_action, move_player_path }
       };
       XrInteractionProfileSuggestedBinding profile_bindings = {XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
       profile_bindings.interactionProfile     = profile_path;
@@ -625,11 +661,17 @@ bool init_platform() {
     /* Xbox Controller Interaction Profile */
     {
       XrPath profile_path;
-      XrPath select_path;
-      xrStringToPath(platform_xr_instance, "/user/gamepad/input/a/click", &select_path);
+      XrPath action_button_path;
+      XrPath exit_path;
+      XrPath move_player_path;
+      xrStringToPath(platform_xr_instance, "/user/gamepad/input/a/click", &action_button_path);
+      xrStringToPath(platform_xr_instance, "/user/gamepad/input/y/click", &exit_path);
+      xrStringToPath(platform_xr_instance, "/user/gamepad/input/thumbstick_left", &move_player_path);
       xrStringToPath(platform_xr_instance, "/interaction_profiles/microsoft/xbox_controller", &profile_path);
       XrActionSuggestedBinding action_bindings[] = {
-        { platform_xr_input.select_action, select_path }
+        { platform_xr_input.action_button_action, action_button_path },
+        { platform_xr_input.exit_action, exit_path },
+        { platform_xr_input.move_player_action, move_player_path }
       };
       XrInteractionProfileSuggestedBinding profile_bindings = {XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
       profile_bindings.interactionProfile     = profile_path;
@@ -822,11 +864,6 @@ bool poll_platform_events() {
     xrGetActionStatePose(platform_xr_session, &get_info, &pose_state);
     platform_xr_input.render_hands[hand] = pose_state.isActive;
 
-    XrActionStateBoolean select_state = {XR_TYPE_ACTION_STATE_BOOLEAN};
-    get_info.action = platform_xr_input.select_action;
-    xrGetActionStateBoolean(platform_xr_session, &get_info, &select_state);
-    platform_xr_input.hand_selects[hand] = select_state.currentState && select_state.changedSinceLastSync;
-
     if (platform_xr_input.render_hands[hand]) {
       XrSpaceLocation space_location = {XR_TYPE_SPACE_LOCATION};
       XrResult result                = xrLocateSpace(platform_xr_input.hand_spaces[hand], platform_xr_app_space, platform_render_thread_frame_state.predictedDisplayTime, &space_location);
@@ -838,22 +875,67 @@ bool poll_platform_events() {
     }
   }
 
+  {
+    /* get left hand actions */
+    XrActionStateGetInfo get_info = {XR_TYPE_ACTION_STATE_GET_INFO};
+    get_info.subactionPath = platform_xr_input.hand_subaction_paths[0];
+
+    XrActionStateBoolean exit_state = {XR_TYPE_ACTION_STATE_BOOLEAN};
+    get_info.action = platform_xr_input.exit_action;
+    xrGetActionStateBoolean(platform_xr_session, &get_info, &exit_state);
+    platform_xr_input.exit = exit_state.currentState && exit_state.changedSinceLastSync;
+
+    XrActionStateVector2f move_player_state = {XR_TYPE_ACTION_STATE_VECTOR2F};
+    get_info.action = platform_xr_input.move_player_action;
+    xrGetActionStateVector2f(platform_xr_session, &get_info, &move_player_state);
+    platform_xr_input.move_player = move_player_state.currentState;
+
+    /* get right hand actions */
+    get_info.subactionPath = platform_xr_input.hand_subaction_paths[1];
+
+    XrActionStateBoolean action_button_state = {XR_TYPE_ACTION_STATE_BOOLEAN};
+    get_info.action = platform_xr_input.action_button_action;
+    xrGetActionStateBoolean(platform_xr_session, &get_info, &action_button_state);
+    platform_xr_input.action_button = action_button_state.currentState && action_button_state.changedSinceLastSync;
+
+    XrActionStateBoolean move_board_state = {XR_TYPE_ACTION_STATE_BOOLEAN};
+    get_info.action = platform_xr_input.move_board_action;
+    xrGetActionStateBoolean(platform_xr_session, &get_info, &move_board_state);
+    platform_xr_input.move_board = move_board_state.currentState && move_board_state.changedSinceLastSync;
+  }
+
   /*  Note: for quest2 "/user/gamepad" is an unsupported subaction path (gamepad doesn't work without subaction path as well...)
   {
     XrActionStateGetInfo get_info = {XR_TYPE_ACTION_STATE_GET_INFO};
     get_info.subactionPath        = platform_xr_input.gamepad_subaction_path;
 
-    XrActionStateBoolean select_state = {XR_TYPE_ACTION_STATE_BOOLEAN};
-    get_info.action = platform_xr_input.select_action;
-    XrResult xr_result = xrGetActionStateBoolean(platform_xr_session, &get_info, &select_state);
-    platform_xr_input.gamepad_select = select_state.currentState && select_state.changedSinceLastSync;
+    XrActionStateBoolean action_button_state = {XR_TYPE_ACTION_STATE_BOOLEAN};
+    get_info.action = platform_xr_input.action_button_action;
+    XrResult xr_result = xrGetActionStateBoolean(platform_xr_session, &get_info, &action_button_state);
+    platform_xr_input.gamepad_action_button = action_button_state.currentState && action_button_state.changedSinceLastSync;
+
+    XrActionStateBoolean exit_state = {XR_TYPE_ACTION_STATE_BOOLEAN};
+    get_info.action = platform_xr_input.exit_action;
+    xrGetActionStateBoolean(platform_xr_session, &get_info, &exit_state);
+    platform_xr_input.gamepad_exit = exit_state.currentState && exit_state.changedSinceLastSync;
+
+    XrActionStateVector2f move_player_state = {XR_TYPE_ACTION_STATE_VECTOR2F};
+    get_info.action = platform_xr_input.move_player_action;
+    xrGetActionStateVector2f(platform_xr_session, &get_info, &move_player_state);
+    platform_xr_input.gamepad_move_player = move_player_state.currentState;
   }
   */
-  input_state.gamepad_select = false;
-  //input_state.gamepad_select = platform_xr_input.gamepad_select;
+  input_state.gamepad_action_button = false;
+  input_state.gamepad_exit          = false;
+  input_state.gamepad_move_player   = {0.0f, 0.0f};
+  //input_state.gamepad_action_button = platform_xr_input.gamepad_action_button;
+  //input_state.gamepad_exit          = platform_xr_input.gamepad_exit;
+  //input_state.gamepad_move_player   = platform_xr_input.gamepad_move_player;
 
-  input_state.left_hand_select  = platform_xr_input.hand_selects[0];
-  input_state.right_hand_select = platform_xr_input.hand_selects[1];
+  input_state.action_button = platform_xr_input.action_button;
+  input_state.move_board    = platform_xr_input.move_board;
+  input_state.exit          = platform_xr_input.exit;
+  input_state.move_player   = platform_xr_input.move_player;
 
   input_state.left_hand_transform.position     = platform_xr_input.hand_poses[0].position;
   input_state.left_hand_transform.orientation  = platform_xr_input.hand_poses[0].orientation;

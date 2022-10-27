@@ -7,9 +7,13 @@
 struct InputState {
   Transform left_hand_transform;
   Transform right_hand_transform;
-  bool      left_hand_select;
-  bool      right_hand_select;
-  bool      gamepad_select;
+  bool      action_button;
+  bool      move_board;
+  bool      exit;
+  Vector2f  move_player;
+  bool      gamepad_action_button;
+  bool      gamepad_exit;
+  Vector2f  gamepad_move_player;
 };
 
 void init_thread(void (*function_ptr)(), const uint32_t thread_pool_index);

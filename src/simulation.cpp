@@ -219,9 +219,9 @@ struct Board {
 
   void init() {
     this->wall_material_id    = create_graphics_material(Vector4f{0.27843f, 0.27451f, 0.2549f, 1.0f}, 0.6f, 0.7f);
-    this->floor_1_material_id = create_graphics_material(Vector4f{0.22353f, 0.43922f, 0.1451f, 1.0f}, 0.0f, 1.0f);
-    this->floor_2_material_id = create_graphics_material(Vector4f{0.27843f, 0.52941f, 0.18039f, 1.0f}, 0.0f, 1.0f);
-    this->stone_material_id   = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.3f, 0.75f, "assets/textures/block_rock.jpeg");
+    this->floor_1_material_id = create_graphics_material(Vector4f{0.22353f, 0.43922f, 0.1451f, 1.0f}, 0.0f, 0.9f);
+    this->floor_2_material_id = create_graphics_material(Vector4f{0.27843f, 0.52941f, 0.18039f, 1.0f}, 0.0f, 0.9f);
+    this->stone_material_id   = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.8f, "assets/textures/block_rock.jpeg");
     this->brick_material_id_0 = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.85f, "assets/textures/brick_texture_0.png");
     this->brick_material_id_1 = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 0.85f, "assets/textures/brick_texture_1.png");
     this->bomb_material_id    = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.2f, 0.9f, "assets/textures/bomb.png");
@@ -392,7 +392,7 @@ struct Board {
     first_floor_position = { first_block_position.x + block_offset, first_block_position.y, first_block_position.z + block_offset };
     for (size_t row_index=0; row_index < floor_row_count; ++row_index) {
       for (size_t column_index=0; column_index < floor_column_count; ++column_index) {
-        floor_wall_blocks[floor_wall_blocks_index].position    = { first_floor_position.x + ((float)column_index * block_offset), first_floor_position.y, first_floor_position.z + ((float)row_index * block_offset) };
+        floor_wall_blocks[floor_wall_blocks_index].position = { first_floor_position.x + ((float)column_index * block_offset), first_floor_position.y, first_floor_position.z + ((float)row_index * block_offset) };
         ++floor_wall_blocks_index;
       }
     }
@@ -580,12 +580,10 @@ void SimulationState::update() {
   player_4->update();
   board->update();
 
-  if (input_state.left_hand_select) {
-    DEBUG_LOG("left hand select\n");
-
+  if (input_state.move_board) {
     //play_audio_source(player_1->sound_id);
 
-    board->move(input_state.left_hand_transform.position);
+    board->move(input_state.right_hand_transform.position);
     player_1->transform.position = board->player_1_start_position;
     player_2->transform.position = board->player_2_start_position;
     player_3->transform.position = board->player_3_start_position;
@@ -594,15 +592,15 @@ void SimulationState::update() {
     //player_1->current_direction = Bomberman::GlobalDirection::Right;
   }
 
-  if (input_state.right_hand_select) {
-    DEBUG_LOG("right hand select\n");
+  if (input_state.exit || input_state.gamepad_exit) {
     platform_request_exit();
   }
 
-  if (input_state.gamepad_select) {
-    DEBUG_LOG("gamepad select\n");
+  if (input_state.gamepad_action_button) {
+    DEBUG_LOG("gamepad action button\n");
   }
 
+  //DEBUG_LOG("x: %.3f y: %.3f\n", input_state.move_player.x, input_state.move_player.y);
 }
 
 void SimulationState::exit() {
