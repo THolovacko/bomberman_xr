@@ -460,7 +460,6 @@ struct Bomberman {
   AnimationArray animations;
   uint32_t player_id;
   GlobalDirection current_direction;
-  GlobalDirection previous_direction;
 
   void init(const uint32_t player_id) {
     this->player_id             = player_id;
@@ -508,13 +507,13 @@ struct Bomberman {
           target_transform.position.x += (Board::block_offset / 1.25f);
           break;
         }
-        case GlobalDirection::Left: {
+        case GlobalDirection::Right: {
           rotate_transform_global(target_transform, 90.0f, y_axis);
           target_transform.position.x += (Board::block_offset / 2.5f);
           target_transform.position.z += (Board::block_offset / 2.5f);
           break;
         }
-        case GlobalDirection::Right: {
+        case GlobalDirection::Left: {
           rotate_transform_global(target_transform, -90.0f, y_axis);
           target_transform.position.x += (Board::block_offset / 2.5f);
           target_transform.position.z -= (Board::block_offset / 2.5f);
@@ -559,12 +558,6 @@ struct MovementSystem {
   void move_player(const uint32_t player_id, const Bomberman::GlobalDirection direction) {
     const uint32_t player_index = player_id - 1;
     if (is_player_moving_bits[player_index]) {
-      /*
-      if ( (movement_state.target_position.x - movement_state.initial_position.x) != 0.0f) {
-        //  TODO: handle chained moves
-        //const float tmp = (movement_state.target_position.x - player_movement_states[i]->player.transform.position.x)
-      }
-      */
       return;
     }
     PlayerMovementState& movement_state = player_movement_states[player_index];
@@ -576,7 +569,7 @@ struct MovementSystem {
     if (direction == Bomberman::GlobalDirection::Up) {
       if (row_index == 0) return;
       target_tile_index = movement_state.current_tile_index - 13;
-      position_offset.z += board_state->Board::block_offset;
+      position_offset.z -= board_state->Board::block_offset;
     } else if (direction == Bomberman::GlobalDirection::Right) {
       if (column_index == 12 ) return;
       target_tile_index = movement_state.current_tile_index + 1;
@@ -588,15 +581,14 @@ struct MovementSystem {
     } else if (direction == Bomberman::GlobalDirection::Down) {
       if (row_index == 10) return;
       target_tile_index = movement_state.current_tile_index + 13;
-      position_offset.z -= board_state->Board::block_offset;
+      position_offset.z += board_state->Board::block_offset;
     }
 
     if ( (board_state->tile_states[target_tile_index] == Board::TileState::Brick) || (board_state->tile_states[target_tile_index] == Board::TileState::Stone) ) return;
 
     movement_state.target_tile_index          = target_tile_index;
     movement_state.initial_position           = movement_state.player->transform.position;
-    movement_state.target_position            = movement_state.player->transform.position;
-    movement_state.player->previous_direction = movement_state.player->current_direction;
+    movement_state.target_position            = { movement_state.initial_position.x + position_offset.x, movement_state.initial_position.y + position_offset.y, movement_state.initial_position.z + position_offset.z };
     movement_state.player->current_direction  = direction;
 
     is_player_moving_bits[player_index] = true;
@@ -605,17 +597,20 @@ struct MovementSystem {
   void update() {
     for (uint32_t i=0; i < 4; ++i) {
       if (is_player_moving_bits[i]) {
+        const Vector3f direction = { player_movement_states[i].target_position.x - player_movement_states[i].initial_position.x, 0.0f, player_movement_states[i].target_position.z - player_movement_states[i].initial_position.z };
+        const bool is_moving_x_axis = direction.x != 0.0f;
+        const float direction_sign = (static_cast<float>(direction.x > 0.0f || direction.z > 0.0f) * 1.0f) + (static_cast<float>(direction.x < 0.0f || direction.z < 0.0f) * -1.0f);
+        constexpr float tiles_per_second = 4.0f;
+        const Vector3f velocity = { (board_state->Board::block_offset * tiles_per_second) * delta_time_seconds * direction_sign * static_cast<float>(is_moving_x_axis), 0.0f, (board_state->Board::block_offset * tiles_per_second) * delta_time_seconds * direction_sign * static_cast<float>(!is_moving_x_axis) };
         Vector3f& current_position = player_movement_states[i].player->transform.position;
-        Vector3f velocity = { ((player_movement_states[i].target_position.x - current_position.x) * 2.0f) * delta_time_seconds, (player_movement_states[i].target_position.y - current_position.y) * delta_time_seconds, (player_movement_states[i].target_position.z - current_position.z) * delta_time_seconds };
         current_position.x += velocity.x;
-        current_position.y += velocity.y;
         current_position.z += velocity.z;
 
         PlayerMovementState& movement_state = player_movement_states[i];
         bool reached_destination = ( (velocity.x > 0.0f) && (current_position.x >= movement_state.target_position.x) ) ||
                                    ( (velocity.x < 0.0f) && (current_position.x <= movement_state.target_position.x) ) ||
-                                   ( (velocity.y > 0.0f) && (current_position.y >= movement_state.target_position.y) ) ||
-                                   ( (velocity.y < 0.0f) && (current_position.y <= movement_state.target_position.y) );
+                                   ( (velocity.z > 0.0f) && (current_position.z >= movement_state.target_position.z) ) ||
+                                   ( (velocity.z < 0.0f) && (current_position.z <= movement_state.target_position.z) );
 
         if (reached_destination) {
           is_player_moving_bits[i] = false;
@@ -707,8 +702,6 @@ void SimulationState::update() {
   player_3->update();
   player_4->update();
   board->update();
-
-
 }
 
 void SimulationState::exit() {
