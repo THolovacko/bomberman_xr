@@ -707,6 +707,20 @@ void SimulationState::update() {
 
   //play_audio_source(player_1->sound_id);
 
+  if (input_state.move_board) {
+    board->move(input_state.right_hand_transform.position);
+    player_1->transform.position = board->player_1_start_position;
+    player_2->transform.position = board->player_2_start_position;
+    player_3->transform.position = board->player_3_start_position;
+    player_4->transform.position = board->player_4_start_position;
+  }
+
+  board->update();
+
+  if (input_state.exit || input_state.gamepad_exit) {
+    platform_request_exit();
+  }
+
   constexpr float movement_threshold = 0.5f;
   if (input_state.move_player.x > movement_threshold) { // move right
     movement_system->move_player(player_1->player_id, Bomberman::GlobalDirection::Right);
@@ -720,18 +734,6 @@ void SimulationState::update() {
 
   movement_system->update();
 
-  if (input_state.move_board) {
-    board->move(input_state.right_hand_transform.position);
-    player_1->transform.position = board->player_1_start_position;
-    player_2->transform.position = board->player_2_start_position;
-    player_3->transform.position = board->player_3_start_position;
-    player_4->transform.position = board->player_4_start_position;
-  }
-
-  if (input_state.exit || input_state.gamepad_exit) {
-    platform_request_exit();
-  }
-
   if (input_state.gamepad_action_button) {
     DEBUG_LOG("gamepad action button\n");
   }
@@ -741,7 +743,6 @@ void SimulationState::update() {
   player_2->update();
   player_3->update();
   player_4->update();
-  board->update();
 }
 
 void SimulationState::exit() {
