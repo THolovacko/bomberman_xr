@@ -538,8 +538,9 @@ struct MovementSystem {
   };
 
   Board* board_state;
-  std::bitset<4> is_player_moving_bits;
+  std::bitset<8> is_player_moving_bits; // first half player is moving; second half player has chained move
   PlayerMovementState player_movement_states[4];
+  Bomberman::GlobalDirection chain_move_directions[4];
 
   void reset(Board* const board_state, Bomberman* const player_1, Bomberman* const player_2, Bomberman* const player_3, Bomberman* const player_4) {
     this->board_state = board_state;
@@ -555,10 +556,22 @@ struct MovementSystem {
     player_movement_states[3].current_tile_index = 142;
   }
 
-  void move_player(const uint32_t player_id, const Bomberman::GlobalDirection direction) {
+  bool move_player(const uint32_t player_id, const Bomberman::GlobalDirection direction) {
     const uint32_t player_index = player_id - 1;
     if (is_player_moving_bits[player_index]) {
-      return;
+      const Vector3f total_distance = { player_movement_states[player_index].target_position.x - player_movement_states[player_index].initial_position.x,
+                                        0.0f,
+                                        player_movement_states[player_index].target_position.z - player_movement_states[player_index].initial_position.z
+                                      };
+      const Vector3f current_distance = { player_movement_states[player_index].player->transform.position.x - player_movement_states[player_index].initial_position.x,
+                                          0.0f,
+                                          player_movement_states[player_index].player->transform.position.z - player_movement_states[player_index].initial_position.z
+                                        };
+      const float chain_threshold = 0.8f;
+      is_player_moving_bits[player_index + 4] = ( (current_distance.x != 0.0f) && ((current_distance.x / total_distance.x) > chain_threshold) || 
+                                                  (current_distance.z != 0.0f) && ((current_distance.z / total_distance.z) > chain_threshold));
+      chain_move_directions[player_index] = direction;
+      return false;
     }
     PlayerMovementState& movement_state = player_movement_states[player_index];
 
@@ -567,31 +580,32 @@ struct MovementSystem {
     uint32_t target_tile_index;
     Vector3f position_offset = {0.0f, 0.0f, 0.0f};
     if (direction == Bomberman::GlobalDirection::Up) {
-      if (row_index == 0) return;
+      if (row_index == 0) return false;
       target_tile_index = movement_state.current_tile_index - 13;
       position_offset.z -= board_state->Board::block_offset;
     } else if (direction == Bomberman::GlobalDirection::Right) {
-      if (column_index == 12 ) return;
+      if (column_index == 12 ) return false;
       target_tile_index = movement_state.current_tile_index + 1;
       position_offset.x += board_state->Board::block_offset;
     } else if (direction == Bomberman::GlobalDirection::Left) {
-      if (column_index == 0 ) return;
+      if (column_index == 0 ) return false;
       target_tile_index = movement_state.current_tile_index - 1;
       position_offset.x -= board_state->Board::block_offset;
     } else if (direction == Bomberman::GlobalDirection::Down) {
-      if (row_index == 10) return;
+      if (row_index == 10) return false;
       target_tile_index = movement_state.current_tile_index + 13;
       position_offset.z += board_state->Board::block_offset;
     }
 
-    if ( (board_state->tile_states[target_tile_index] == Board::TileState::Brick) || (board_state->tile_states[target_tile_index] == Board::TileState::Stone) ) return;
+    if ( (board_state->tile_states[target_tile_index] == Board::TileState::Brick) || (board_state->tile_states[target_tile_index] == Board::TileState::Stone) ) return false;
 
-    movement_state.target_tile_index          = target_tile_index;
-    movement_state.initial_position           = movement_state.player->transform.position;
-    movement_state.target_position            = { movement_state.initial_position.x + position_offset.x, movement_state.initial_position.y + position_offset.y, movement_state.initial_position.z + position_offset.z };
-    movement_state.player->current_direction  = direction;
+    movement_state.target_tile_index         = target_tile_index;
+    movement_state.initial_position          = movement_state.player->transform.position;
+    movement_state.target_position           = { movement_state.initial_position.x + position_offset.x, movement_state.initial_position.y + position_offset.y, movement_state.initial_position.z + position_offset.z };
+    movement_state.player->current_direction = direction;
 
     is_player_moving_bits[player_index] = true;
+    return true;
   }
 
   void update() {
@@ -613,9 +627,35 @@ struct MovementSystem {
                                    ( (velocity.z < 0.0f) && (current_position.z <= movement_state.target_position.z) );
 
         if (reached_destination) {
+          const Vector3f difference = { current_position.x - movement_state.target_position.x, 0.0f, current_position.z - movement_state.target_position.z };
+
           is_player_moving_bits[i] = false;
           player_movement_states[i].player->transform.position = movement_state.target_position;
           movement_state.current_tile_index = movement_state.target_tile_index;
+
+          if (is_player_moving_bits[i + 4]) { // check if chained move
+            if ( this->move_player(movement_state.player->player_id, chain_move_directions[i]) ) {
+              const Vector3f chain_direction = { player_movement_states[i].target_position.x - player_movement_states[i].initial_position.x, 0.0f, player_movement_states[i].target_position.z - player_movement_states[i].initial_position.z };
+              const bool chain_is_moving_x_axis = chain_direction.x != 0.0f;
+              const float chain_direction_sign = (static_cast<float>(chain_direction.x > 0.0f || chain_direction.z > 0.0f) * 1.0f) + (static_cast<float>(chain_direction.x < 0.0f || chain_direction.z < 0.0f) * -1.0f);
+              const float difference_magnitude = abs(difference.x + difference.z);
+              current_position.x += (difference_magnitude * static_cast<float>(chain_is_moving_x_axis) * chain_direction_sign);
+              current_position.z += (difference_magnitude * static_cast<float>(!chain_is_moving_x_axis) * chain_direction_sign);
+
+              bool chain_reached_destination = ( (chain_direction.x > 0.0f) && (current_position.x >= movement_state.target_position.x) ) ||
+                                               ( (chain_direction.x < 0.0f) && (current_position.x <= movement_state.target_position.x) ) ||
+                                               ( (chain_direction.z > 0.0f) && (current_position.z >= movement_state.target_position.z) ) ||
+                                               ( (chain_direction.z < 0.0f) && (current_position.z <= movement_state.target_position.z) );
+
+              if (chain_reached_destination) {
+                is_player_moving_bits[i] = false;
+                player_movement_states[i].player->transform.position = movement_state.target_position;
+                movement_state.current_tile_index = movement_state.target_tile_index;
+              }
+
+              is_player_moving_bits[i + 4] = false;
+            }
+          }
         }
       }
     }
