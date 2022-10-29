@@ -347,7 +347,8 @@ struct Board {
     reset_tile_states();
   }
 
-  void move(const Vector3f& position) {
+  Vector3f move(const Vector3f& position) {
+    const Vector3f amount_moved = { position.x - this->first_block_position.x, position.y - this->first_block_position.y, position.z - this->first_block_position.z };
     this->first_block_position = position;
 
     size_t floor_wall_blocks_index = 0;
@@ -437,6 +438,8 @@ struct Board {
     for (size_t i=0; i < std::size(all_stones); ++i) {
       all_stones[i].update();
     }
+
+    return amount_moved;
   }
 
   void update() {
@@ -707,20 +710,6 @@ void SimulationState::update() {
 
   //play_audio_source(player_1->sound_id);
 
-  if (input_state.move_board) {
-    board->move(input_state.right_hand_transform.position);
-    player_1->transform.position = board->player_1_start_position;
-    player_2->transform.position = board->player_2_start_position;
-    player_3->transform.position = board->player_3_start_position;
-    player_4->transform.position = board->player_4_start_position;
-  }
-
-  board->update();
-
-  if (input_state.exit || input_state.gamepad_exit) {
-    platform_request_exit();
-  }
-
   constexpr float movement_threshold = 0.5f;
   if (input_state.move_player.x > movement_threshold) { // move right
     movement_system->move_player(player_1->player_id, Bomberman::GlobalDirection::Right);
@@ -731,13 +720,26 @@ void SimulationState::update() {
   } else if ( input_state.move_player.y < (-1.0 * movement_threshold) ) {  // move down
     movement_system->move_player(player_1->player_id, Bomberman::GlobalDirection::Down);
   }
-
   movement_system->update();
+
+  if (input_state.move_board && ( !movement_system->is_player_moving_bits[0] && !movement_system->is_player_moving_bits[1] && !movement_system->is_player_moving_bits[2] && !movement_system->is_player_moving_bits[3] )) {
+    const Vector3f moved_vector = board->move(input_state.right_hand_transform.position);
+
+    player_1->transform.position = add_vectors(player_1->transform.position, moved_vector);
+    player_2->transform.position = add_vectors(player_2->transform.position, moved_vector);
+    player_3->transform.position = add_vectors(player_3->transform.position, moved_vector);
+    player_4->transform.position = add_vectors(player_4->transform.position, moved_vector);
+  }
+
+  if (input_state.exit || input_state.gamepad_exit) {
+    platform_request_exit();
+  }
 
   if (input_state.gamepad_action_button) {
     DEBUG_LOG("gamepad action button\n");
   }
 
+  board->update();
   hands->update();
   player_1->update();
   player_2->update();

@@ -70,6 +70,7 @@ Quaternionf normalize(Quaternionf quaternion);
 Vector3f calculate_forward_vector(Quaternionf orientation);
 Vector3f calculate_up_vector(Quaternionf orientation);
 Vector3f calculate_right_vector(Quaternionf orientation);
+Vector3f add_vectors(const Vector3f& a, const Vector3f& b);
 
 #endif  // INCLUDE_TOM_ENGINE_MATHS_H
 
@@ -351,6 +352,9 @@ Vector3f calculate_right_vector(Quaternionf orientation) {
   return *result;
 }
 
+Vector3f add_vectors(const Vector3f& a, const Vector3f& b) {
+  return { a.x + b.x, a.y + b.y, a.z + b.z };
+}
 
 #endif  //TOM_ENGINE_MATHS_IMPLEMENTATION_SINGLE
 #endif  // TOM_ENGINE_MATHS_IMPLEMENTATION
