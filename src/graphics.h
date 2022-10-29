@@ -127,6 +127,7 @@ struct GraphicsSkeleton {
 struct AnimationState {
   uint32_t animation_id;
   float    time_seconds;
+  float    speed_factor;
   bool     is_looping;
 
   void tick_time();
@@ -205,7 +206,7 @@ struct GraphicsSkin {
   void update(const uint16_t index, const Transform& transform, uint32_t material_id);
   void update(const uint16_t index, uint32_t material_id);
   void update_all(uint32_t material_id);
-  void play_animation(const uint32_t animation_id, const bool is_looping=false);
+  void play_animation(const uint32_t animation_id, const float speed_factor=1.0f, const bool is_looping=false);
   void stop_animating();
 };
 

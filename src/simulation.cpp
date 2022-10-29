@@ -455,6 +455,10 @@ struct Board {
 
 struct Bomberman {
   enum class GlobalDirection : uint8_t { Down, Up, Right, Left };
+  static constexpr uint32_t death_animation_offset   = 0;
+  static constexpr uint32_t idle_animation_offset    = 1;
+  static constexpr uint32_t running_animation_offset = 2;
+  static constexpr uint32_t dancing_animation_offset = 3;
 
   Transform transform;
   uint32_t material_id;
@@ -497,6 +501,8 @@ struct Bomberman {
 
     Vector3f x_axis = { 1.0f, 0.0f, 0.0f };
     rotate_transform_global(this->transform, 90.0f, x_axis);
+
+    this->skin.play_animation(this->animations.first_animation + idle_animation_offset, true);
   }
 
   void update() {
@@ -553,22 +559,33 @@ struct MovementSystem {
     player_movement_states[2].player = player_3;
     player_movement_states[3].player = player_4;
 
+    player_movement_states[0].player->skin.play_animation(player_movement_states[0].player->animations.first_animation + Bomberman::idle_animation_offset, true);
+    player_movement_states[1].player->skin.play_animation(player_movement_states[1].player->animations.first_animation + Bomberman::idle_animation_offset, true);
+    player_movement_states[2].player->skin.play_animation(player_movement_states[2].player->animations.first_animation + Bomberman::idle_animation_offset, true);
+    player_movement_states[3].player->skin.play_animation(player_movement_states[3].player->animations.first_animation + Bomberman::idle_animation_offset, true);
+
     player_movement_states[0].current_tile_index = 0;
+    player_movement_states[0].target_tile_index  = 0;
     player_movement_states[1].current_tile_index = 12;
+    player_movement_states[1].target_tile_index  = 12;
     player_movement_states[2].current_tile_index = 130;
+    player_movement_states[2].target_tile_index  = 130;
     player_movement_states[3].current_tile_index = 142;
+    player_movement_states[3].target_tile_index  = 142;
   }
 
   bool move_player(const uint32_t player_id, const Bomberman::GlobalDirection direction) {
     const uint32_t player_index = player_id - 1;
+    PlayerMovementState& movement_state = player_movement_states[player_index];
+
     if (is_player_moving_bits[player_index]) {
-      const Vector3f total_distance = { player_movement_states[player_index].target_position.x - player_movement_states[player_index].initial_position.x,
+      const Vector3f total_distance = { movement_state.target_position.x - movement_state.initial_position.x,
                                         0.0f,
-                                        player_movement_states[player_index].target_position.z - player_movement_states[player_index].initial_position.z
+                                        movement_state.target_position.z - movement_state.initial_position.z
                                       };
-      const Vector3f current_distance = { player_movement_states[player_index].player->transform.position.x - player_movement_states[player_index].initial_position.x,
+      const Vector3f current_distance = { movement_state.player->transform.position.x - movement_state.initial_position.x,
                                           0.0f,
-                                          player_movement_states[player_index].player->transform.position.z - player_movement_states[player_index].initial_position.z
+                                          movement_state.player->transform.position.z - movement_state.initial_position.z
                                         };
       const float chain_threshold = 0.8f;
       is_player_moving_bits[player_index + 4] = ( (current_distance.x != 0.0f) && ((current_distance.x / total_distance.x) > chain_threshold) || 
@@ -576,7 +593,6 @@ struct MovementSystem {
       chain_move_directions[player_index] = direction;
       return false;
     }
-    PlayerMovementState& movement_state = player_movement_states[player_index];
 
     const size_t row_index    = movement_state.current_tile_index / 13;
     const size_t column_index = movement_state.current_tile_index % 13;
@@ -600,7 +616,12 @@ struct MovementSystem {
       position_offset.z += board_state->Board::block_offset;
     }
 
-    if ( (board_state->tile_states[target_tile_index] == Board::TileState::Brick) || (board_state->tile_states[target_tile_index] == Board::TileState::Stone) ) return false;
+    if (board_state->tile_states[target_tile_index] != Board::TileState::Empty) return false;
+    for (uint32_t i=0; i < 4; ++i) {
+      if (i == player_index) continue;
+      if (player_movement_states[i].current_tile_index == target_tile_index) return false;
+      if (player_movement_states[i].target_tile_index == target_tile_index) return false;
+    }
 
     movement_state.target_tile_index         = target_tile_index;
     movement_state.initial_position          = movement_state.player->transform.position;
@@ -654,10 +675,15 @@ struct MovementSystem {
                 is_player_moving_bits[i] = false;
                 player_movement_states[i].player->transform.position = movement_state.target_position;
                 movement_state.current_tile_index = movement_state.target_tile_index;
+                player_movement_states[i].player->skin.play_animation(player_movement_states[i].player->animations.first_animation + Bomberman::idle_animation_offset, true);
               }
 
               is_player_moving_bits[i + 4] = false;
+            } else {  // player has move chained but move unsuccessful
+              player_movement_states[i].player->skin.play_animation(player_movement_states[i].player->animations.first_animation + Bomberman::idle_animation_offset, true);
             }
+          } else {  // player has no move chained
+            player_movement_states[i].player->skin.play_animation(player_movement_states[i].player->animations.first_animation + Bomberman::idle_animation_offset, true);
           }
         }
       }
@@ -685,16 +711,9 @@ void SimulationState::init() {
   update_ambient_light_intensity(0.25f);
 
   player_1->init(1);
-  player_1->skin.play_animation(player_1->animations.first_animation + 1, true);
-
   player_2->init(2);
-  player_2->skin.play_animation(player_2->animations.first_animation + 1, true);
-
   player_3->init(3);
-  player_3->skin.play_animation(player_3->animations.first_animation + 1, true);
-
   player_4->init(4);
-  player_4->skin.play_animation(player_4->animations.first_animation + 1, true);
 
   board->init();
   player_1->transform.position = board->player_1_start_position;
@@ -711,16 +730,19 @@ void SimulationState::update() {
   //play_audio_source(player_1->sound_id);
 
   constexpr float movement_threshold = 0.5f;
+  bool player_moved = false;
   if (input_state.move_player.x > movement_threshold) { // move right
-    movement_system->move_player(player_1->player_id, Bomberman::GlobalDirection::Right);
+    player_moved = movement_system->move_player(player_1->player_id, Bomberman::GlobalDirection::Right);
   } else if ( input_state.move_player.x < (-1.0f * movement_threshold) ) {  // move left
-    movement_system->move_player(player_1->player_id, Bomberman::GlobalDirection::Left);
+    player_moved = movement_system->move_player(player_1->player_id, Bomberman::GlobalDirection::Left);
   } else if ( input_state.move_player.y > movement_threshold ) {  // move up
-    movement_system->move_player(player_1->player_id, Bomberman::GlobalDirection::Up);
+    player_moved = movement_system->move_player(player_1->player_id, Bomberman::GlobalDirection::Up);
   } else if ( input_state.move_player.y < (-1.0 * movement_threshold) ) {  // move down
-    movement_system->move_player(player_1->player_id, Bomberman::GlobalDirection::Down);
+    player_moved = movement_system->move_player(player_1->player_id, Bomberman::GlobalDirection::Down);
   }
   movement_system->update();
+
+  if (player_moved) player_1->skin.play_animation(player_1->animations.first_animation + Bomberman::running_animation_offset, 1.65f, true);
 
   if (input_state.move_board && ( !movement_system->is_player_moving_bits[0] && !movement_system->is_player_moving_bits[1] && !movement_system->is_player_moving_bits[2] && !movement_system->is_player_moving_bits[3] )) {
     const Vector3f moved_vector = board->move(input_state.right_hand_transform.position);

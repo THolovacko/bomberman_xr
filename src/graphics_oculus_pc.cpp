@@ -2121,9 +2121,9 @@ void GraphicsSkin::update_all(uint32_t material_id) {
   }
 }
 
-void GraphicsSkin::play_animation(const uint32_t animation_id, const bool is_looping) {
+void GraphicsSkin::play_animation(const uint32_t animation_id, const float speed_factor, const bool is_looping) {
   if (this->skeleton_instance_id != GraphicsSkeletonInstances::Index(-1)) {
-    graphics_all_skeleton_instances.animation_states[this->skeleton_instance_id] = { animation_id, vulkan_all_animations.animations[animation_id].start_time_seconds, is_looping };
+    graphics_all_skeleton_instances.animation_states[this->skeleton_instance_id] = { animation_id, vulkan_all_animations.animations[animation_id].start_time_seconds, speed_factor, is_looping };
   }
 }
 
@@ -2809,7 +2809,7 @@ void update_ambient_light_intensity(const float intensity) {
 }
 
 void AnimationState::tick_time() {
-  this->time_seconds += delta_time_seconds * static_cast<float>(this->animation_id != uint32_t(-1));
+  this->time_seconds += delta_time_seconds * this->speed_factor * static_cast<float>(this->animation_id != uint32_t(-1));
 
   const Animation& animation   = vulkan_all_animations.animations[this->animation_id];
   const bool is_animation_over = this->time_seconds > animation.end_time_seconds;
