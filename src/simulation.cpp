@@ -53,9 +53,22 @@ struct Bomb {
   uint32_t material_id;
   uint32_t sound_id;
   GraphicsMeshInstanceArray mesh_instance_array;
+  const float min_scale_factor = 0.1f;
+  const float max_scale_factor = 0.15f;
+  const float speed            = 0.11f;
+  float current_scale_factor   = min_scale_factor;
+  float scale_sign             = 1.0f;
 
   void update() {
-    Transform transform = {this->position,this->orientation,{0.1f * global_scale, 0.1f * global_scale, 0.1f * global_scale}};
+    const float scale_magnitude = fmod(speed * delta_time_seconds, max_scale_factor);
+    scale_sign = (  1.0f * static_cast<float>((scale_sign == 1.0f)  && (this->current_scale_factor + scale_magnitude) <= max_scale_factor) ) +
+                 (  1.0f * static_cast<float>((scale_sign == -1.0f) && (this->current_scale_factor - scale_magnitude) < min_scale_factor)  ) +
+                 ( -1.0f * static_cast<float>((scale_sign == 1.0f)  && (this->current_scale_factor + scale_magnitude) > max_scale_factor)  ) +
+                 ( -1.0f * static_cast<float>((scale_sign == -1.0f) && (this->current_scale_factor - scale_magnitude) >= min_scale_factor) );
+    this->current_scale_factor += scale_magnitude * scale_sign;
+    this->current_scale_factor = ( min_scale_factor * static_cast<float>(this->current_scale_factor < min_scale_factor) ) + ( this->current_scale_factor * static_cast<float>(this->current_scale_factor >= min_scale_factor) );
+
+    Transform transform = {this->position,this->orientation,{current_scale_factor * global_scale, current_scale_factor * global_scale, current_scale_factor * global_scale}};
     for (uint32_t i=0; i < this->mesh_instance_array.size; ++i) update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id, uint32_t(-1), i);
   }
 };
@@ -187,11 +200,13 @@ struct Board {
   void show_bomb(const size_t tile_index) {
     const size_t row_index    = tile_index / 13;
     const size_t column_index = tile_index % 13;
+    tile_states[tile_index] = TileState::Bomb;
     all_bombs[tile_index].position = { first_floor_position.x + ((float)column_index * block_offset), first_floor_position.y + (block_offset / 2.0f), first_floor_position.z + ((float)row_index * block_offset) };
     all_bombs[tile_index].update();
   }
 
   void hide_bomb(const size_t tile_index) {
+    tile_states[tile_index] = TileState::Empty;
     all_bombs[tile_index].position = Board::hide_position;
     all_bombs[tile_index].update();
   }
@@ -441,16 +456,6 @@ struct Board {
 
     return amount_moved;
   }
-
-  void update() {
-    for (size_t i=0; i < std::size(all_bombs); ++i) {
-      all_bombs[i].update();
-    }
-
-    for (size_t i=0; i < std::size(all_fire); ++i) {
-      all_fire[i].update();
-    }
-  }
 };
 
 struct Bomberman {
@@ -691,6 +696,129 @@ struct MovementSystem {
   }
 };
 
+struct BombSystem {
+  Board* board_state;
+  MovementSystem* movement_state;
+  std::bitset<143> is_bomb_active_bits;
+  std::bitset<143> is_fire_active_bits;
+  float timers[143];
+  const float detonation_time_seconds = 3.0f;
+  const float explosion_time_seconds  = 1.0f;
+  const uint32_t blast_radius         = 2;
+
+  void init(Board* const board_state, MovementSystem* const movement_state) {
+    this->board_state    = board_state;
+    this->movement_state = movement_state;
+  }
+
+  void place_bomb(const uint32_t player_id) {
+    const uint32_t player_index = player_id - 1;
+    const uint32_t tile_index = movement_state->player_movement_states[player_index].current_tile_index;
+    if (board_state->tile_states[tile_index] == Board::TileState::Bomb) return;
+
+    board_state->show_bomb(tile_index);
+    is_bomb_active_bits[tile_index] = true;
+    timers[tile_index] = 0.0f;
+  }
+
+  void update() {
+    for (uint32_t tile_index=0; tile_index < is_bomb_active_bits.size(); ++tile_index) {
+      if (is_bomb_active_bits[tile_index]) {
+        board_state->all_bombs[tile_index].update();
+        timers[tile_index] += delta_time_seconds;
+        if (timers[tile_index] >= detonation_time_seconds) {
+          board_state->hide_bomb(tile_index);
+          is_bomb_active_bits[tile_index] = false;
+          timers[tile_index] = timers[tile_index] - detonation_time_seconds;  // timer is being used for fire now
+          bool render_fire = timers[tile_index] > explosion_time_seconds;
+
+          const int32_t column_index = tile_index % 13;
+          const int32_t row_index    = tile_index / 13;
+
+          uint32_t blast_up_count = 0;
+          for (int32_t i=1; i <= blast_radius; ++i) {
+            const int32_t target_tile_index = int32_t(tile_index) + (i * int32_t(-13));
+            if ( (row_index - i) < 0 ) break;
+            if (board_state->tile_states[target_tile_index] == Board::TileState::Stone) break;
+
+            ++blast_up_count;
+            if ( (board_state->tile_states[target_tile_index] == Board::TileState::Brick) || (board_state->tile_states[target_tile_index] == Board::TileState::Bomb) ) break;
+            // TODO: also break if hit another player
+          }
+          uint32_t blast_down_count = 0;
+          for (int32_t i=1; i <= blast_radius; ++i) {
+            const int32_t target_tile_index = int32_t(tile_index) + (i * int32_t(13));
+            if ( (row_index + i) > 11 ) break;
+            if (board_state->tile_states[target_tile_index] == Board::TileState::Stone) break;
+
+            ++blast_down_count;
+            if ( (board_state->tile_states[target_tile_index] == Board::TileState::Brick) || (board_state->tile_states[target_tile_index] == Board::TileState::Bomb) ) break;
+          }
+          uint32_t blast_right_count = 0;
+          for (int32_t i=1; i <= blast_radius; ++i) {
+            const int32_t target_tile_index = int32_t(tile_index) + i;
+            if ( (column_index + i) > 12 ) break;
+            if (board_state->tile_states[target_tile_index] == Board::TileState::Stone) break;
+
+            ++blast_right_count;
+            if ( (board_state->tile_states[target_tile_index] == Board::TileState::Brick) || (board_state->tile_states[target_tile_index] == Board::TileState::Bomb) ) break;
+          }
+          uint32_t blast_left_count = 0;
+          for (int32_t i=1; i <= blast_radius; ++i) {
+            const int32_t target_tile_index = int32_t(tile_index) - i;
+            if ( (column_index - i) < 0 ) break;
+            if (board_state->tile_states[target_tile_index] == Board::TileState::Stone) break;
+
+            ++blast_left_count;
+            if ( (board_state->tile_states[target_tile_index] == Board::TileState::Brick) || (board_state->tile_states[target_tile_index] == Board::TileState::Bomb) ) break;
+          }
+
+          auto explode_tile = [&](const uint32_t p_tile_index) {
+            switch (board_state->tile_states[p_tile_index]) {
+              case Board::TileState::Brick: {
+                board_state->hide_brick(p_tile_index);
+                board_state->tile_states[p_tile_index] = Board::TileState::Empty;
+                break;
+              }
+              case Board::TileState::Bomb: {
+                break;
+              }
+            }
+
+            if (p_tile_index == movement_state->player_movement_states[0].current_tile_index) {
+            } else if (p_tile_index == movement_state->player_movement_states[1].current_tile_index) {
+            } else if (p_tile_index == movement_state->player_movement_states[2].current_tile_index) {
+            } else if (p_tile_index == movement_state->player_movement_states[3].current_tile_index) {
+            }
+
+            if (render_fire) {
+              //board_state->show_fire(p_tile_index);
+            }
+          };
+
+
+          for (uint32_t i=1; i <= blast_up_count; ++i) {
+            const uint32_t target_tile_index = tile_index - (i * 13);
+            explode_tile(target_tile_index);
+          }
+          for (uint32_t i=1; i <= blast_down_count; ++i) {
+            const uint32_t target_tile_index = tile_index + (i * 13);
+            explode_tile(target_tile_index);
+          }
+          for (uint32_t i=1; i <= blast_right_count; ++i) {
+            const uint32_t target_tile_index = tile_index + i;
+            explode_tile(target_tile_index);
+          }
+          for (uint32_t i=1; i <= blast_left_count; ++i) {
+            const uint32_t target_tile_index = tile_index - i;
+            explode_tile(target_tile_index);
+          }
+        }
+      }
+    }
+  }
+};
+
 HandControllers* hands          = new HandControllers();
 Board* board                    = new Board();
 Bomberman* player_1             = new Bomberman();
@@ -698,6 +826,7 @@ Bomberman* player_2             = new Bomberman();
 Bomberman* player_3             = new Bomberman();
 Bomberman* player_4             = new Bomberman();
 MovementSystem* movement_system = new MovementSystem();
+BombSystem* bomb_system         = new BombSystem();
 
 void head_pose_dependent_sim() {
   hands->update();
@@ -722,12 +851,17 @@ void SimulationState::init() {
   player_4->transform.position = board->player_4_start_position;
 
   movement_system->reset(board, player_1, player_2, player_3, player_4);
+  bomb_system->init(board, movement_system);
 }
 
 void SimulationState::update() {
   PROFILE_FUNCTION();
 
   //play_audio_source(player_1->sound_id);
+
+  if (input_state.exit || input_state.gamepad_exit) {
+    platform_request_exit();
+  }
 
   constexpr float movement_threshold = 0.5f;
   bool player_moved = false;
@@ -744,6 +878,10 @@ void SimulationState::update() {
 
   if (player_moved) player_1->skin.play_animation(player_1->animations.first_animation + Bomberman::running_animation_offset, 1.65f, true);
 
+  if (input_state.action_button || input_state.gamepad_action_button) {
+    bomb_system->place_bomb(player_1->player_id);
+  }
+
   if (input_state.move_board && ( !movement_system->is_player_moving_bits[0] && !movement_system->is_player_moving_bits[1] && !movement_system->is_player_moving_bits[2] && !movement_system->is_player_moving_bits[3] )) {
     const Vector3f moved_vector = board->move(input_state.right_hand_transform.position);
 
@@ -753,15 +891,7 @@ void SimulationState::update() {
     player_4->transform.position = add_vectors(player_4->transform.position, moved_vector);
   }
 
-  if (input_state.exit || input_state.gamepad_exit) {
-    platform_request_exit();
-  }
-
-  if (input_state.gamepad_action_button) {
-    DEBUG_LOG("gamepad action button\n");
-  }
-
-  board->update();
+  bomb_system->update();
   hands->update();
   player_1->update();
   player_2->update();
