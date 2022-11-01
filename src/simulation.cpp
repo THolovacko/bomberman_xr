@@ -738,7 +738,9 @@ struct BombSystem {
 
   void update() {
     for (uint32_t tile_index=0; tile_index < 143; ++tile_index) {
+      uint32_t loop_tile_index     = tile_index;
       bool fire_created_this_frame = false;
+      bool chained_explosion       = false;
 
       if (is_bomb_active_bits[tile_index]) {
         board_state->all_bombs[tile_index].update();
@@ -767,7 +769,7 @@ struct BombSystem {
           uint32_t blast_down_count = 0;
           for (int32_t i=1; i <= blast_radius; ++i) {
             const int32_t target_tile_index = int32_t(tile_index) + (i * int32_t(13));
-            if ( (row_index + i) > 11 ) break;
+            if ( (row_index + i) > 10 ) break;
             if (board_state->tile_states[target_tile_index] == Board::TileState::Stone) break;
 
             ++blast_down_count;
@@ -798,26 +800,31 @@ struct BombSystem {
             if ( (target_tile_index == movement_state->player_movement_states[0].current_tile_index) || (target_tile_index == movement_state->player_movement_states[1].current_tile_index) || (target_tile_index == movement_state->player_movement_states[2].current_tile_index) || (target_tile_index == movement_state->player_movement_states[3].current_tile_index) ) break;
           }
 
-          auto explode_tile = [&](const uint32_t p_tile_index) {
-            switch (board_state->tile_states[p_tile_index]) {
+          auto explode_tile = [&](const uint32_t p_target_tile_index) {
+            switch (board_state->tile_states[p_target_tile_index]) {
               case Board::TileState::Brick: {
-                board_state->hide_brick(p_tile_index);
+                board_state->hide_brick(p_target_tile_index);
                 break;
               }
               case Board::TileState::Bomb: {
+                timers[p_target_tile_index] = detonation_time_seconds + timers[tile_index] - delta_time_seconds; // delta_time_seconds will be added to it again
+                if ( (p_target_tile_index < tile_index) && (p_target_tile_index < loop_tile_index)) {
+                  loop_tile_index   = p_target_tile_index;
+                  chained_explosion = true;
+                }
                 break;
               }
             }
 
-            if (p_tile_index == movement_state->player_movement_states[0].current_tile_index) {
-            } else if (p_tile_index == movement_state->player_movement_states[1].current_tile_index) {
-            } else if (p_tile_index == movement_state->player_movement_states[2].current_tile_index) {
-            } else if (p_tile_index == movement_state->player_movement_states[3].current_tile_index) {
+            if (p_target_tile_index == movement_state->player_movement_states[0].current_tile_index) {
+            } else if (p_target_tile_index == movement_state->player_movement_states[1].current_tile_index) {
+            } else if (p_target_tile_index == movement_state->player_movement_states[2].current_tile_index) {
+            } else if (p_target_tile_index == movement_state->player_movement_states[3].current_tile_index) {
             }
 
             if (render_fire) {
-              board_state->show_fire(p_tile_index);
-              is_fire_active_bits[p_tile_index] = true;
+              board_state->show_fire(p_target_tile_index);
+              is_fire_active_bits[p_target_tile_index] = true;
             }
           };
 
@@ -849,6 +856,10 @@ struct BombSystem {
           is_fire_active_bits[tile_index] = false;
           board_state->hide_fire(tile_index);
         }
+      }
+
+      if (chained_explosion) {
+        tile_index = loop_tile_index;
       }
     }
   }
