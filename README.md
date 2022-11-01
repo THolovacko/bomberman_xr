@@ -16,7 +16,7 @@
 8. Create an organization at https://developer.oculus.com/manage/organizations/create/
 9. Verify your account at https://developer.oculus.com/manage/verify/
 10. Enable developer-mode on your Quest2 by turning on the **USB Connection Dialog** option at *Settings > System > Developer*
-11. Download and setup Oculus Developer Hub https://developer.oculus.com/downloads/native-android/
+11. Download and setup Meta Quest Developer Hub https://developer.oculus.com/downloads/native-android/
 12. Give permission to access data and allow USB debugging after connecting your headset to your computer using a USB-C cable and putting on the headset
 13. The Oculus Developer Hub should install the Oculus ADB Drivers but you can also install them with dependencies\oculus-adb-driver-2.0\oculus-go-adb-driver-2.0\usb_driver\android_winusb.inf using Device Manager
 14. Create a new temporary project in Android Studio and then use the SDK Manager to install the following:
