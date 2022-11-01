@@ -47,31 +47,6 @@ struct HandControllers {
   };
 };
 
-struct GameState {
-  std::bitset<4> is_player_alive;
-  bool is_game_active;
-
-  void start_game() {
-    is_game_active     = true;
-    is_player_alive[0] = true;
-    is_player_alive[1] = true;
-    is_player_alive[2] = true;
-    is_player_alive[3] = true;
-  }
-
-  void eliminate_player(const uint32_t player_id) {
-    const uint32_t player_index = player_id - 1;
-
-    is_player_alive[player_index] = false;
-    if (is_player_alive.count() == 1) {
-      for (uint32_t i=0; i < is_player_alive.size(); ++i) {
-        // make player dance
-        // delay then reset board etc...
-      }
-    }
-  }
-};
-
 struct Bomb {
   Vector3f position;
   Quaternionf orientation;
@@ -582,6 +557,44 @@ struct Bomberman {
   }
 };
 
+struct GameState {
+  std::bitset<4> is_player_alive;
+  bool is_game_active;
+  Board* board_state;
+  Bomberman* players[4];
+
+  void init(Board* const board_state, Bomberman* const player_1, Bomberman* const player_2, Bomberman* const player_3, Bomberman* const player_4) {
+    this->board_state = board_state;
+    this->players[0]  = player_1;
+    this->players[1]  = player_2;
+    this->players[2]  = player_3;
+    this->players[3]  = player_4;
+  }
+
+  void restart_game() {
+    is_game_active     = true;
+    is_player_alive[0] = true;
+    is_player_alive[1] = true;
+    is_player_alive[2] = true;
+    is_player_alive[3] = true;
+  }
+
+  void eliminate_player(const uint32_t player_id) {
+    const uint32_t player_index = player_id - 1;
+
+    is_player_alive[player_index] = false;
+    if (is_player_alive.count() == 1) {
+      for (uint32_t i=0; i < is_player_alive.size(); ++i) {
+        if (is_player_alive[i]) {
+          players[i]->skin.play_animation(players[i]->animations.first_animation + Bomberman::dancing_animation_offset, 1.0f, true);
+          break;
+        }
+      }
+      is_game_active = false;
+    }
+  }
+};
+
 struct MovementSystem {
   struct PlayerMovementState {
     Vector3f initial_position;
@@ -624,7 +637,7 @@ struct MovementSystem {
   bool move_player(const uint32_t player_id, const Bomberman::GlobalDirection direction) {
     const uint32_t player_index = player_id - 1;
     PlayerMovementState& movement_state = player_movement_states[player_index];
-    if (!current_game_state->is_player_alive[player_index]) return false;
+    if (!current_game_state->is_player_alive[player_index] || !current_game_state->is_game_active) return false;
 
     if (is_player_moving_bits[player_index]) {
       const Vector3f total_distance = { movement_state.target_position.x - movement_state.initial_position.x,
@@ -922,6 +935,8 @@ MovementSystem* movement_system = new MovementSystem();
 BombSystem* bomb_system         = new BombSystem();
 GameState*  game_state          = new GameState();
 
+bool is_not_first_game = false;
+
 void head_pose_dependent_sim() {
   hands->update();
 }
@@ -946,6 +961,7 @@ void SimulationState::init() {
   player_3->transform.position = board->player_3_start_position;
   player_4->transform.position = board->player_4_start_position;
 
+  game_state->init(board, player_1, player_2, player_3, player_4);
   movement_system->reset(game_state, board, player_1, player_2, player_3, player_4);
   bomb_system->init(game_state, board, movement_system);
 }
@@ -978,7 +994,23 @@ void SimulationState::update() {
     if (game_state->is_game_active) {
       bomb_system->place_bomb(player_1->player_id);
     } else {
-      game_state->start_game();
+      player_1->transform.position = board->player_1_start_position;
+      player_2->transform.position = board->player_2_start_position;
+      player_3->transform.position = board->player_3_start_position;
+      player_4->transform.position = board->player_4_start_position;
+
+      player_1->current_direction = Bomberman::GlobalDirection::Down;
+      player_2->current_direction = Bomberman::GlobalDirection::Down;
+      player_3->current_direction = Bomberman::GlobalDirection::Up;
+      player_4->current_direction = Bomberman::GlobalDirection::Up;
+
+      movement_system->reset(game_state, board, player_1, player_2, player_3, player_4);
+      if (is_not_first_game) {
+        board->reset_tile_states();
+      } else {
+        is_not_first_game = true;
+      }
+      game_state->restart_game();
     }
   }
 
