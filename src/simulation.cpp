@@ -47,6 +47,31 @@ struct HandControllers {
   };
 };
 
+struct GameState {
+  std::bitset<4> is_player_alive;
+  bool is_game_active;
+
+  void start_game() {
+    is_game_active     = true;
+    is_player_alive[0] = true;
+    is_player_alive[1] = true;
+    is_player_alive[2] = true;
+    is_player_alive[3] = true;
+  }
+
+  void eliminate_player(const uint32_t player_id) {
+    const uint32_t player_index = player_id - 1;
+
+    is_player_alive[player_index] = false;
+    if (is_player_alive.count() == 1) {
+      for (uint32_t i=0; i < is_player_alive.size(); ++i) {
+        // make player dance
+        // delay then reset board etc...
+      }
+    }
+  }
+};
+
 struct Bomb {
   Vector3f position;
   Quaternionf orientation;
@@ -522,7 +547,7 @@ struct Bomberman {
     Vector3f x_axis = { 1.0f, 0.0f, 0.0f };
     rotate_transform_global(this->transform, 90.0f, x_axis);
 
-    this->skin.play_animation(this->animations.first_animation + idle_animation_offset, true);
+    this->skin.play_animation(this->animations.first_animation + idle_animation_offset, 1.0f, true);
   }
 
   void update() {
@@ -567,11 +592,13 @@ struct MovementSystem {
   };
 
   Board* board_state;
+  GameState* current_game_state;
   std::bitset<8> is_player_moving_bits; // first half player is moving; second half player has chained move
   PlayerMovementState player_movement_states[4];
   Bomberman::GlobalDirection chain_move_directions[4];
 
-  void reset(Board* const board_state, Bomberman* const player_1, Bomberman* const player_2, Bomberman* const player_3, Bomberman* const player_4) {
+  void reset(GameState* const current_game_state, Board* const board_state, Bomberman* const player_1, Bomberman* const player_2, Bomberman* const player_3, Bomberman* const player_4) {
+    this->current_game_state = current_game_state;
     this->board_state = board_state;
 
     player_movement_states[0].player = player_1;
@@ -579,10 +606,10 @@ struct MovementSystem {
     player_movement_states[2].player = player_3;
     player_movement_states[3].player = player_4;
 
-    player_movement_states[0].player->skin.play_animation(player_movement_states[0].player->animations.first_animation + Bomberman::idle_animation_offset, true);
-    player_movement_states[1].player->skin.play_animation(player_movement_states[1].player->animations.first_animation + Bomberman::idle_animation_offset, true);
-    player_movement_states[2].player->skin.play_animation(player_movement_states[2].player->animations.first_animation + Bomberman::idle_animation_offset, true);
-    player_movement_states[3].player->skin.play_animation(player_movement_states[3].player->animations.first_animation + Bomberman::idle_animation_offset, true);
+    player_movement_states[0].player->skin.play_animation(player_movement_states[0].player->animations.first_animation + Bomberman::idle_animation_offset, 1.0f, true);
+    player_movement_states[1].player->skin.play_animation(player_movement_states[1].player->animations.first_animation + Bomberman::idle_animation_offset, 1.0f, true);
+    player_movement_states[2].player->skin.play_animation(player_movement_states[2].player->animations.first_animation + Bomberman::idle_animation_offset, 1.0f, true);
+    player_movement_states[3].player->skin.play_animation(player_movement_states[3].player->animations.first_animation + Bomberman::idle_animation_offset, 1.0f, true);
 
     player_movement_states[0].current_tile_index = 0;
     player_movement_states[0].target_tile_index  = 0;
@@ -597,6 +624,7 @@ struct MovementSystem {
   bool move_player(const uint32_t player_id, const Bomberman::GlobalDirection direction) {
     const uint32_t player_index = player_id - 1;
     PlayerMovementState& movement_state = player_movement_states[player_index];
+    if (!current_game_state->is_player_alive[player_index]) return false;
 
     if (is_player_moving_bits[player_index]) {
       const Vector3f total_distance = { movement_state.target_position.x - movement_state.initial_position.x,
@@ -695,15 +723,15 @@ struct MovementSystem {
                 is_player_moving_bits[i] = false;
                 player_movement_states[i].player->transform.position = movement_state.target_position;
                 movement_state.current_tile_index = movement_state.target_tile_index;
-                player_movement_states[i].player->skin.play_animation(player_movement_states[i].player->animations.first_animation + Bomberman::idle_animation_offset, true);
+                player_movement_states[i].player->skin.play_animation(player_movement_states[i].player->animations.first_animation + Bomberman::idle_animation_offset, 1.0f, true);
               }
 
               is_player_moving_bits[i + 4] = false;
             } else {  // player has move chained but move unsuccessful
-              player_movement_states[i].player->skin.play_animation(player_movement_states[i].player->animations.first_animation + Bomberman::idle_animation_offset, true);
+              player_movement_states[i].player->skin.play_animation(player_movement_states[i].player->animations.first_animation + Bomberman::idle_animation_offset, 1.0f, true);
             }
           } else {  // player has no move chained
-            player_movement_states[i].player->skin.play_animation(player_movement_states[i].player->animations.first_animation + Bomberman::idle_animation_offset, true);
+            player_movement_states[i].player->skin.play_animation(player_movement_states[i].player->animations.first_animation + Bomberman::idle_animation_offset, 1.0f, true);
           }
         }
       }
@@ -712,6 +740,7 @@ struct MovementSystem {
 };
 
 struct BombSystem {
+  GameState* current_game_state;
   Board* board_state;
   MovementSystem* movement_state;
   std::bitset<143> is_bomb_active_bits;
@@ -721,14 +750,16 @@ struct BombSystem {
   const float explosion_time_seconds  = 1.0f;
   const uint32_t blast_radius         = 2;
 
-  void init(Board* const board_state, MovementSystem* const movement_state) {
-    this->board_state    = board_state;
-    this->movement_state = movement_state;
+  void init(GameState* const current_game_state, Board* const board_state, MovementSystem* const movement_state) {
+    this->current_game_state = current_game_state;
+    this->board_state        = board_state;
+    this->movement_state     = movement_state;
   }
 
   void place_bomb(const uint32_t player_id) {
     const uint32_t player_index = player_id - 1;
     const uint32_t tile_index = movement_state->player_movement_states[player_index].current_tile_index;
+    if (!current_game_state->is_player_alive[player_index]) return;
     if (board_state->tile_states[tile_index] == Board::TileState::Bomb) return;
 
     board_state->show_bomb(tile_index);
@@ -817,9 +848,25 @@ struct BombSystem {
             }
 
             if (p_target_tile_index == movement_state->player_movement_states[0].current_tile_index) {
+              current_game_state->eliminate_player(movement_state->player_movement_states[0].player->player_id);
+              movement_state->player_movement_states[0].player->skin.play_animation(movement_state->player_movement_states[0].player->animations.first_animation + Bomberman::death_animation_offset);
+              movement_state->player_movement_states[0].current_tile_index = 1000;
+              movement_state->player_movement_states[0].target_tile_index  = 1000;
             } else if (p_target_tile_index == movement_state->player_movement_states[1].current_tile_index) {
+              current_game_state->eliminate_player(movement_state->player_movement_states[1].player->player_id);
+              movement_state->player_movement_states[1].player->skin.play_animation(movement_state->player_movement_states[0].player->animations.first_animation + Bomberman::death_animation_offset);
+              movement_state->player_movement_states[1].current_tile_index = 1000;
+              movement_state->player_movement_states[1].target_tile_index  = 1000;
             } else if (p_target_tile_index == movement_state->player_movement_states[2].current_tile_index) {
+              current_game_state->eliminate_player(movement_state->player_movement_states[2].player->player_id);
+              movement_state->player_movement_states[2].player->skin.play_animation(movement_state->player_movement_states[0].player->animations.first_animation + Bomberman::death_animation_offset);
+              movement_state->player_movement_states[2].current_tile_index = 1000;
+              movement_state->player_movement_states[2].target_tile_index  = 1000;
             } else if (p_target_tile_index == movement_state->player_movement_states[3].current_tile_index) {
+              current_game_state->eliminate_player(movement_state->player_movement_states[3].player->player_id);
+              movement_state->player_movement_states[3].player->skin.play_animation(movement_state->player_movement_states[0].player->animations.first_animation + Bomberman::death_animation_offset);
+              movement_state->player_movement_states[3].current_tile_index = 1000;
+              movement_state->player_movement_states[3].target_tile_index  = 1000;
             }
 
             if (render_fire) {
@@ -873,6 +920,7 @@ Bomberman* player_3             = new Bomberman();
 Bomberman* player_4             = new Bomberman();
 MovementSystem* movement_system = new MovementSystem();
 BombSystem* bomb_system         = new BombSystem();
+GameState*  game_state          = new GameState();
 
 void head_pose_dependent_sim() {
   hands->update();
@@ -898,8 +946,8 @@ void SimulationState::init() {
   player_3->transform.position = board->player_3_start_position;
   player_4->transform.position = board->player_4_start_position;
 
-  movement_system->reset(board, player_1, player_2, player_3, player_4);
-  bomb_system->init(board, movement_system);
+  movement_system->reset(game_state, board, player_1, player_2, player_3, player_4);
+  bomb_system->init(game_state, board, movement_system);
 }
 
 void SimulationState::update() {
@@ -927,7 +975,11 @@ void SimulationState::update() {
   if (player_moved) player_1->skin.play_animation(player_1->animations.first_animation + Bomberman::running_animation_offset, 1.65f, true);
 
   if (input_state.action_button || input_state.gamepad_action_button) {
-    bomb_system->place_bomb(player_1->player_id);
+    if (game_state->is_game_active) {
+      bomb_system->place_bomb(player_1->player_id);
+    } else {
+      game_state->start_game();
+    }
   }
 
   if (input_state.move_board && ( !movement_system->is_player_moving_bits[0] && !movement_system->is_player_moving_bits[1] && !movement_system->is_player_moving_bits[2] && !movement_system->is_player_moving_bits[3] )) {
