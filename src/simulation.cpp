@@ -834,7 +834,7 @@ struct BombSystem {
           const int32_t row_index    = tile_index / 13;
 
           uint32_t blast_up_count = 0;
-          for (int32_t i=1; i <= blast_radius; ++i) {
+          for (int32_t i=1; i <= int32_t(blast_radius); ++i) {
             const int32_t target_tile_index = int32_t(tile_index) + (i * int32_t(-13));
             if ( (row_index - i) < 0 ) break;
             if (board_state->tile_states[target_tile_index] == Board::TileState::Stone) break;
@@ -845,7 +845,7 @@ struct BombSystem {
             if ( (target_tile_index == movement_state->player_movement_states[0].current_tile_index) || (target_tile_index == movement_state->player_movement_states[1].current_tile_index) || (target_tile_index == movement_state->player_movement_states[2].current_tile_index) || (target_tile_index == movement_state->player_movement_states[3].current_tile_index) ) break;
           }
           uint32_t blast_down_count = 0;
-          for (int32_t i=1; i <= blast_radius; ++i) {
+          for (int32_t i=1; i <= int32_t(blast_radius); ++i) {
             const int32_t target_tile_index = int32_t(tile_index) + (i * int32_t(13));
             if ( (row_index + i) > 10 ) break;
             if (board_state->tile_states[target_tile_index] == Board::TileState::Stone) break;
@@ -856,7 +856,7 @@ struct BombSystem {
             if ( (target_tile_index == movement_state->player_movement_states[0].current_tile_index) || (target_tile_index == movement_state->player_movement_states[1].current_tile_index) || (target_tile_index == movement_state->player_movement_states[2].current_tile_index) || (target_tile_index == movement_state->player_movement_states[3].current_tile_index) ) break;
           }
           uint32_t blast_right_count = 0;
-          for (int32_t i=1; i <= blast_radius; ++i) {
+          for (int32_t i=1; i <= int32_t(blast_radius); ++i) {
             const int32_t target_tile_index = int32_t(tile_index) + i;
             if ( (column_index + i) > 12 ) break;
             if (board_state->tile_states[target_tile_index] == Board::TileState::Stone) break;
@@ -867,7 +867,7 @@ struct BombSystem {
             if ( (target_tile_index == movement_state->player_movement_states[0].current_tile_index) || (target_tile_index == movement_state->player_movement_states[1].current_tile_index) || (target_tile_index == movement_state->player_movement_states[2].current_tile_index) || (target_tile_index == movement_state->player_movement_states[3].current_tile_index) ) break;
           }
           uint32_t blast_left_count = 0;
-          for (int32_t i=1; i <= blast_radius; ++i) {
+          for (int32_t i=1; i <= int32_t(blast_radius); ++i) {
             const int32_t target_tile_index = int32_t(tile_index) - i;
             if ( (column_index - i) < 0 ) break;
             if (board_state->tile_states[target_tile_index] == Board::TileState::Stone) break;
