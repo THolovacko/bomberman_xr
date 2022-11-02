@@ -695,7 +695,7 @@ struct MovementSystem {
 
   void update() {
     for (uint32_t i=0; i < 4; ++i) {
-      if (is_player_moving_bits[i]) {
+      if (is_player_moving_bits[i] && current_game_state->is_player_alive[i]) {
         const Vector3f direction = { player_movement_states[i].target_position.x - player_movement_states[i].initial_position.x, 0.0f, player_movement_states[i].target_position.z - player_movement_states[i].initial_position.z };
         const bool is_moving_x_axis = direction.x != 0.0f;
         const float direction_sign = (static_cast<float>(direction.x > 0.0f || direction.z > 0.0f) * 1.0f) + (static_cast<float>(direction.x < 0.0f || direction.z < 0.0f) * -1.0f);
@@ -1023,12 +1023,12 @@ void SimulationState::update() {
     player_4->transform.position = add_vectors(player_4->transform.position, moved_vector);
   }
 
-  bomb_system->update();
   hands->update();
   player_1->update();
   player_2->update();
   player_3->update();
   player_4->update();
+  bomb_system->update();
 }
 
 void SimulationState::exit() {
