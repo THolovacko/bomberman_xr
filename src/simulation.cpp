@@ -51,7 +51,6 @@ struct Bomb {
   Vector3f position;
   Quaternionf orientation;
   uint32_t material_id;
-  uint32_t sound_id;
   GraphicsMeshInstanceArray mesh_instance_array;
   const float min_scale_factor = 0.1f;
   const float max_scale_factor = 0.15f;
@@ -77,7 +76,6 @@ struct Fire {
   Vector3f position;
   Quaternionf orientation;
   uint32_t material_id;
-  uint32_t sound_id;
   GraphicsMeshInstanceArray mesh_instance_array;
   const float min_scale_factor = 0.125f;
   const float max_scale_factor = 0.15f;
@@ -484,7 +482,6 @@ struct Bomberman {
 
   Transform transform;
   uint32_t material_id;
-  uint32_t sound_id;
   GraphicsSkin skin;
   AnimationArray animations;
   uint32_t player_id;
@@ -517,7 +514,6 @@ struct Bomberman {
     }
     create_graphics_skin_from_glb("assets/models/bomberman.glb", this->skin);
 
-    this->sound_id = create_audio_source("assets/sounds/white_bomberman_hurt.wav", 4.0f, 16.0f, 0.0f, 1.0f);
     this->skin.update_all(material_id);
     this->animations = load_animations_from_glb_file("assets/models/bomberman.glb");
 
@@ -553,9 +549,78 @@ struct Bomberman {
       }
     }
 
-    update_audio_source(sound_id, this->transform.position);
-
     this->skin.update(0, target_transform, material_id);
+  }
+};
+
+struct SoundSystem {
+  uint32_t place_bomb_sound_ids[4];
+  uint32_t explosion_sound_ids[4];
+  uint32_t win_sound_ids[4];
+  uint32_t death_sound_ids[4];
+  uint32_t start_bell_sound_id;
+  Board*   board_state;
+  Bomberman* players[4];
+
+  void init(Board* const board_state, Bomberman* const player_1, Bomberman* const player_2, Bomberman* const player_3, Bomberman* const player_4) {
+    this->board_state = board_state;
+    this->players[0]  = player_1;
+    this->players[1]  = player_2;
+    this->players[2]  = player_3;
+    this->players[3]  = player_4;
+
+    for (uint32_t i=0; i < 4; ++i) {
+      place_bomb_sound_ids[i] = create_audio_source("assets/sounds/place_bomb.wav", 4.0f, 16.0f, 0.0f, 1.0f);
+      explosion_sound_ids[i]  = create_audio_source("assets/sounds/explosion.wav", 4.0f, 16.0f, 0.0f, 1.0f);
+    }
+
+    start_bell_sound_id = create_audio_source("assets/sounds/start_bell.wav", 4.0f, 16.0f, 0.0f, 1.0f);
+    win_sound_ids[0]    = create_audio_source("assets/sounds/white_win.wav", 4.0f, 16.0f, 0.0f, 1.0f);
+    win_sound_ids[1]    = create_audio_source("assets/sounds/red_win.wav", 4.0f, 16.0f, 0.0f, 1.0f);
+    win_sound_ids[2]    = create_audio_source("assets/sounds/green_win.wav", 4.0f, 16.0f, 0.0f, 1.0f);
+    win_sound_ids[3]    = create_audio_source("assets/sounds/blue_win.wav", 4.0f, 16.0f, 0.0f, 1.0f);
+    death_sound_ids[0]  = create_audio_source("assets/sounds/white_death.wav", 4.0f, 16.0f, 0.0f, 1.0f);
+    death_sound_ids[1]  = create_audio_source("assets/sounds/red_death.wav", 4.0f, 16.0f, 0.0f, 1.0f);
+    death_sound_ids[2]  = create_audio_source("assets/sounds/green_death.wav", 4.0f, 16.0f, 0.0f, 1.0f);
+    death_sound_ids[3]  = create_audio_source("assets/sounds/blue_death.wav", 4.0f, 16.0f, 0.0f, 1.0f);
+  }
+
+  void play_start_bell() {
+    update_audio_source(start_bell_sound_id, { board_state->first_floor_position.x + (Board::block_offset * 6), board_state->first_floor_position.y, board_state->first_floor_position.z });
+    play_audio_source(start_bell_sound_id);
+  }
+
+  void play_place_bomb(const uint32_t player_id) {
+    static uint32_t sound_source_id = 0;
+
+    const uint32_t player_index = player_id - 1;
+    update_audio_source(place_bomb_sound_ids[sound_source_id], players[player_index]->transform.position);
+    play_audio_source(place_bomb_sound_ids[sound_source_id]);
+    sound_source_id = (sound_source_id + 1) % std::size(place_bomb_sound_ids);
+  }
+
+  void play_bomb_explosion(const uint32_t tile_index) {
+    static uint32_t sound_source_id = 0;
+
+    const int32_t column_index = tile_index % 13;
+    const int32_t row_index    = tile_index / 13;
+    const Vector3f position { board_state->first_floor_position.x + (Board::block_offset * (float)column_index), board_state->first_floor_position.y, board_state->first_floor_position.z + (Board::block_offset * (float)row_index) };
+
+    update_audio_source(explosion_sound_ids[sound_source_id], position);
+    play_audio_source(explosion_sound_ids[sound_source_id]);
+    sound_source_id = (sound_source_id + 1) % std::size(explosion_sound_ids);
+  }
+
+  void play_player_win(const uint32_t player_id) {
+    const uint32_t player_index = player_id - 1;
+    update_audio_source(win_sound_ids[player_index], players[player_index]->transform.position);
+    play_audio_source(win_sound_ids[player_index]);
+  }
+
+  void play_player_lose(const uint32_t player_id) {
+    const uint32_t player_index = player_id - 1;
+    update_audio_source(death_sound_ids[player_index], players[player_index]->transform.position);
+    play_audio_source(death_sound_ids[player_index]);
   }
 };
 
@@ -563,10 +628,12 @@ struct GameState {
   std::bitset<4> is_player_alive;
   bool is_game_active;
   Board* board_state;
+  SoundSystem* sound_state;
   Bomberman* players[4];
 
-  void init(Board* const board_state, Bomberman* const player_1, Bomberman* const player_2, Bomberman* const player_3, Bomberman* const player_4) {
+  void init(Board* const board_state, SoundSystem* const sound_state, Bomberman* const player_1, Bomberman* const player_2, Bomberman* const player_3, Bomberman* const player_4) {
     this->board_state = board_state;
+    this->sound_state = sound_state;
     this->players[0]  = player_1;
     this->players[1]  = player_2;
     this->players[2]  = player_3;
@@ -589,6 +656,7 @@ struct GameState {
       for (uint32_t i=0; i < is_player_alive.size(); ++i) {
         if (is_player_alive[i]) {
           players[i]->skin.play_animation(players[i]->animations.first_animation + Bomberman::dancing_animation_offset, 1.0f, true);
+          sound_state->play_player_win(i + 1);
           break;
         }
       }
@@ -785,6 +853,7 @@ struct BombSystem {
   GameState* current_game_state;
   Board* board_state;
   MovementSystem* movement_state;
+  SoundSystem* sound_state;
   std::bitset<143> is_bomb_active_bits;
   std::bitset<143> is_fire_active_bits;
   float timers[143];
@@ -792,10 +861,11 @@ struct BombSystem {
   const float explosion_time_seconds  = 1.0f;
   const uint32_t blast_radius         = 2;
 
-  void reset(GameState* const current_game_state, Board* const board_state, MovementSystem* const movement_state) {
+  void reset(GameState* const current_game_state, Board* const board_state, MovementSystem* const movement_state, SoundSystem* const sound_state) {
     this->current_game_state = current_game_state;
     this->board_state        = board_state;
     this->movement_state     = movement_state;
+    this->sound_state        = sound_state;
     is_bomb_active_bits.reset();
     is_fire_active_bits.reset();
     for (uint32_t i=0; i < 143; ++i) {
@@ -812,6 +882,7 @@ struct BombSystem {
     board_state->show_bomb(tile_index);
     is_bomb_active_bits[tile_index] = true;
     timers[tile_index] = 0.0f;
+    sound_state->play_place_bomb(player_id);
   }
 
   void update() {
@@ -899,21 +970,25 @@ struct BombSystem {
               movement_state->player_movement_states[0].player->skin.play_animation(movement_state->player_movement_states[0].player->animations.first_animation + Bomberman::death_animation_offset);
               movement_state->player_movement_states[0].current_tile_index = 1000;
               movement_state->player_movement_states[0].target_tile_index  = 1000;
+              sound_state->play_player_lose(1);
             } else if (p_target_tile_index == movement_state->player_movement_states[1].current_tile_index) {
               current_game_state->eliminate_player(movement_state->player_movement_states[1].player->player_id);
               movement_state->player_movement_states[1].player->skin.play_animation(movement_state->player_movement_states[0].player->animations.first_animation + Bomberman::death_animation_offset);
               movement_state->player_movement_states[1].current_tile_index = 1000;
               movement_state->player_movement_states[1].target_tile_index  = 1000;
+              sound_state->play_player_lose(2);
             } else if (p_target_tile_index == movement_state->player_movement_states[2].current_tile_index) {
               current_game_state->eliminate_player(movement_state->player_movement_states[2].player->player_id);
               movement_state->player_movement_states[2].player->skin.play_animation(movement_state->player_movement_states[0].player->animations.first_animation + Bomberman::death_animation_offset);
               movement_state->player_movement_states[2].current_tile_index = 1000;
               movement_state->player_movement_states[2].target_tile_index  = 1000;
+              sound_state->play_player_lose(3);
             } else if (p_target_tile_index == movement_state->player_movement_states[3].current_tile_index) {
               current_game_state->eliminate_player(movement_state->player_movement_states[3].player->player_id);
               movement_state->player_movement_states[3].player->skin.play_animation(movement_state->player_movement_states[0].player->animations.first_animation + Bomberman::death_animation_offset);
               movement_state->player_movement_states[3].current_tile_index = 1000;
               movement_state->player_movement_states[3].target_tile_index  = 1000;
+              sound_state->play_player_lose(4);
             }
 
             if (render_fire) {
@@ -940,6 +1015,8 @@ struct BombSystem {
             const uint32_t target_tile_index = tile_index - i;
             explode_tile(target_tile_index);
           }
+
+          sound_state->play_bomb_explosion(tile_index);
         }
       }
 
@@ -968,6 +1045,7 @@ Bomberman* player_4             = new Bomberman();
 MovementSystem* movement_system = new MovementSystem();
 BombSystem* bomb_system         = new BombSystem();
 GameState*  game_state          = new GameState();
+SoundSystem* sound_system       = new SoundSystem();
 
 bool is_not_first_game = false;
 
@@ -995,15 +1073,14 @@ void SimulationState::init() {
   player_3->transform.position = board->player_3_start_position;
   player_4->transform.position = board->player_4_start_position;
 
-  game_state->init(board, player_1, player_2, player_3, player_4);
+  sound_system->init(board, player_1, player_2, player_3, player_4);
+  game_state->init(board, sound_system, player_1, player_2, player_3, player_4);
   movement_system->reset(game_state, board, player_1, player_2, player_3, player_4);
-  bomb_system->reset(game_state, board, movement_system);
+  bomb_system->reset(game_state, board, movement_system, sound_system);
 }
 
 void SimulationState::update() {
   PROFILE_FUNCTION();
-
-  //play_audio_source(player_1->sound_id);
 
   if (input_state.exit || input_state.gamepad_exit) {
     platform_request_exit();
@@ -1029,13 +1106,14 @@ void SimulationState::update() {
       bomb_system->place_bomb(player_1->player_id);
     } else {
       movement_system->reset(game_state, board, player_1, player_2, player_3, player_4);
-      bomb_system->reset(game_state, board, movement_system);
+      bomb_system->reset(game_state, board, movement_system, sound_system);
       if (is_not_first_game) {
         board->reset_tile_states();
       } else {
         is_not_first_game = true;
       }
       game_state->restart_game();
+      sound_system->play_start_bell();
       return;
     }
   }

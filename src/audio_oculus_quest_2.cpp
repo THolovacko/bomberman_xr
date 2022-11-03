@@ -12,7 +12,7 @@
 
 struct AudioSources {
   typedef uint32_t Index;
-  static constexpr uint32_t max_count = 16;
+  static constexpr uint32_t max_count = 32;
 
   struct ColdData {
     float attenuation_range_min_meters;
@@ -212,7 +212,6 @@ uint32_t create_audio_source(const char* file_path, const float attenuation_rang
   ovrAudio_SetAudioSourceAttenuationMode(ovr_audio_context, id, ovrAudioSourceAttenuationMode_InverseSquare, 1.0f); // last param is only relevant if using ovrAudioSourceAttenuationMode_Fixed
   ovrAudio_SetAudioSourceRange(ovr_audio_context, id, all_audio_sources.cold_data[id].attenuation_range_min_meters, all_audio_sources.cold_data[id].attenuation_range_max_meters);
   ovrAudio_SetAudioSourceRadius(ovr_audio_context, id, all_audio_sources.cold_data[id].radius_meters);
-  ovrAudio_SetAudioReverbSendLevel(ovr_audio_context, id, all_audio_sources.cold_data[id].reverb_send_level);
 
   return id;
 }

@@ -10,7 +10,7 @@
 
 struct AudioSources {
   typedef uint32_t Index;
-  static constexpr uint32_t max_count = 16;
+  static constexpr uint32_t max_count = 32;
 
   struct ColdData {
     float attenuation_range_min_meters;
