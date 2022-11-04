@@ -3,7 +3,8 @@
 #include <time.h>
 #include <bitset>
 
-constexpr float global_scale = 0.25f;
+constexpr float global_scale    = 0.25f;
+constexpr uint32_t player_count = 4;
 
 struct HandControllers {
   GraphicsMeshInstanceArray mesh_instance_array;
@@ -80,19 +81,20 @@ struct Fire {
   const float min_scale_factor = 0.125f;
   const float max_scale_factor = 0.15f;
   const float speed            = 0.11f;
-  float current_scale_factor   = lerp(min_scale_factor, max_scale_factor, float(rand() % 10) / 10.0f);
+  static constexpr float scale = 0.145f;
+  float current_y_scale_factor = lerp(min_scale_factor, max_scale_factor, float(rand() % 10) / 10.0f);
   float scale_sign             = -1.0f;
 
   void update() {
     const float scale_magnitude = fmod(speed * delta_time_seconds, max_scale_factor);
-    scale_sign = (  1.0f * static_cast<float>((scale_sign == 1.0f)  && (this->current_scale_factor + scale_magnitude) <= max_scale_factor) ) +
-                 (  1.0f * static_cast<float>((scale_sign == -1.0f) && (this->current_scale_factor - scale_magnitude) < min_scale_factor)  ) +
-                 ( -1.0f * static_cast<float>((scale_sign == 1.0f)  && (this->current_scale_factor + scale_magnitude) > max_scale_factor)  ) +
-                 ( -1.0f * static_cast<float>((scale_sign == -1.0f) && (this->current_scale_factor - scale_magnitude) >= min_scale_factor) );
-    this->current_scale_factor += scale_magnitude * scale_sign;
-    this->current_scale_factor = ( min_scale_factor * static_cast<float>(this->current_scale_factor < min_scale_factor) ) + ( this->current_scale_factor * static_cast<float>(this->current_scale_factor >= min_scale_factor) );
+    scale_sign = (  1.0f * static_cast<float>((scale_sign == 1.0f)  && (this->current_y_scale_factor + scale_magnitude) <= max_scale_factor) ) +
+                 (  1.0f * static_cast<float>((scale_sign == -1.0f) && (this->current_y_scale_factor - scale_magnitude) < min_scale_factor)  ) +
+                 ( -1.0f * static_cast<float>((scale_sign == 1.0f)  && (this->current_y_scale_factor + scale_magnitude) > max_scale_factor)  ) +
+                 ( -1.0f * static_cast<float>((scale_sign == -1.0f) && (this->current_y_scale_factor - scale_magnitude) >= min_scale_factor) );
+    this->current_y_scale_factor += scale_magnitude * scale_sign;
+    this->current_y_scale_factor = ( min_scale_factor * static_cast<float>(this->current_y_scale_factor < min_scale_factor) ) + ( this->current_y_scale_factor * static_cast<float>(this->current_y_scale_factor >= min_scale_factor) );
 
-    Transform transform = {this->position,this->orientation,{0.145f * global_scale, current_scale_factor * global_scale, 0.145f * global_scale}};
+    Transform transform = {this->position,this->orientation,{scale * global_scale, current_y_scale_factor * global_scale, scale * global_scale}};
     for (uint32_t i=0; i < this->mesh_instance_array.size; ++i) update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id, uint32_t(-1), i);
   }
 };
@@ -116,9 +118,10 @@ struct StoneBlock {
   Quaternionf orientation;
   uint32_t material_id;
   GraphicsMeshInstanceArray mesh_instance_array;
+  static constexpr float scale = 0.05f;
 
   void update() {
-    Transform transform = {this->position,this->orientation,{0.05f * global_scale, 0.05f * global_scale, 0.05f * global_scale}};
+    Transform transform = {this->position,this->orientation,{scale * global_scale, scale * global_scale, scale * global_scale}};
     for (uint32_t i=0; i < this->mesh_instance_array.size; ++i) update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id, uint32_t(-1), i);
   }
 };
@@ -128,20 +131,24 @@ struct FloorWallBlock {
   Quaternionf orientation;
   uint32_t material_id;
   GraphicsMeshInstanceArray mesh_instance_array;
+  static constexpr float scale = 0.1f;
 
   void update() {
-    Transform transform = {this->position,this->orientation,{0.1f * global_scale, 0.1f * global_scale, 0.1f * global_scale}};
+    Transform transform = {this->position,this->orientation,{scale * global_scale, scale * global_scale, scale * global_scale}};
     for (uint32_t i=0; i < this->mesh_instance_array.size; ++i) update_graphics_mesh_instance_array(this->mesh_instance_array, transform, material_id, uint32_t(-1), i);
   }
 };
 
 struct Board {
-  static constexpr float block_offset = 0.1f * global_scale;
-  static constexpr size_t floor_wall_block_count = 247; // 13 height and 15 width
-  static constexpr Vector3f hide_position = { 1000000.0f, 1000000.0f, 1000000.0f };
   enum class TileState : uint8_t { Stone, Brick, Bomb, Fire, Empty };
-  const size_t floor_row_count    = 11;
-  const size_t floor_column_count = 13;
+
+  static constexpr size_t height                 = 13;
+  static constexpr size_t width                  = 15;
+  static constexpr float block_offset            = 0.1f * global_scale;
+  static constexpr size_t floor_wall_block_count = (height * width) + (height * 2) + (width * 2) - 4;
+  static constexpr size_t floor_row_count        = height - 2;
+  static constexpr size_t floor_column_count     = width - 2;
+  static constexpr Vector3f hide_position        = { 1000000.0f, 1000000.0f, 1000000.0f };
 
   Vector3f first_block_position = {0.0f, 1.0f, 1.0f}; // position of top left floor block
   Vector3f first_floor_position; // position of top left floor block
@@ -151,11 +158,11 @@ struct Board {
   Vector3f player_4_start_position;
 
   FloorWallBlock floor_wall_blocks[floor_wall_block_count];
-  StoneBlock all_stones[30];
-  BrickBlock all_bricks[143];
-  Bomb all_bombs[143];
-  Fire all_fire[143];
-  TileState tile_states[143];
+  StoneBlock all_stones[ (floor_row_count / 2) * (floor_column_count / 2) ];
+  BrickBlock all_bricks[floor_row_count * floor_column_count];
+  Bomb all_bombs[floor_row_count * floor_column_count];
+  Fire all_fire[floor_row_count * floor_column_count];
+  TileState tile_states[floor_row_count * floor_column_count];
 
   uint32_t wall_material_id;
   uint32_t floor_1_material_id;
@@ -177,10 +184,11 @@ struct Board {
 
     for (size_t row_index=1; row_index < floor_row_count; row_index+=2) {
       for (size_t column_index=1; column_index < floor_column_count; column_index+=2) {
-        tile_states[(row_index * 13) + column_index] = TileState::Stone;
+        tile_states[(row_index * floor_column_count) + column_index] = TileState::Stone;
       }
     }
 
+    static_assert( (floor_row_count == 11) && (floor_column_count == 13) ); // if fails then update is_tile_in_player_spawn_space
     srand(static_cast<unsigned int>(time(NULL)));
     for (size_t tile_index=0; tile_index < std::size(tile_states); ++tile_index) {
       bool is_tile_in_player_spawn_space = (tile_index == 0)   || (tile_index == 1)   || (tile_index == 13)
@@ -198,9 +206,25 @@ struct Board {
     }
   }
 
+  static size_t calculate_row_index_from_tile_index(const size_t tile_index) {
+    return tile_index / floor_column_count;
+  }
+
+  static size_t calculate_column_index_from_tile_index(const size_t tile_index) {
+    return tile_index % floor_column_count;
+  }
+
+  Vector3f calculate_top_right_block_position() {
+    return { first_block_position.x + (14.0f * block_offset), first_block_position.y, first_block_position.z };
+  }
+
+  Vector3f calculate_bottom_left_block_position() {
+    return { first_block_position.x, first_block_position.y, first_block_position.z + (12.0f * block_offset) };
+  }
+
   void show_brick(const size_t tile_index) {
-    const size_t row_index    = tile_index / 13;
-    const size_t column_index = tile_index % 13;
+    const size_t row_index          = calculate_row_index_from_tile_index(tile_index);
+    const size_t column_index       = calculate_column_index_from_tile_index(tile_index);
     all_bricks[tile_index].position = { first_floor_position.x + ((float)column_index * block_offset), first_floor_position.y + block_offset, first_floor_position.z + ((float)row_index * block_offset) };
     all_bricks[tile_index].update();
   }
@@ -211,29 +235,29 @@ struct Board {
   }
 
   void show_bomb(const size_t tile_index) {
-    const size_t row_index    = tile_index / 13;
-    const size_t column_index = tile_index % 13;
-    tile_states[tile_index] = TileState::Bomb;
+    const size_t row_index    = calculate_row_index_from_tile_index(tile_index);
+    const size_t column_index = calculate_column_index_from_tile_index(tile_index);
+    tile_states[tile_index]   = TileState::Bomb;
     all_bombs[tile_index].position = { first_floor_position.x + ((float)column_index * block_offset), first_floor_position.y + (block_offset / 2.0f), first_floor_position.z + ((float)row_index * block_offset) };
     all_bombs[tile_index].update();
   }
 
   void hide_bomb(const size_t tile_index) {
-    tile_states[tile_index] = TileState::Empty;
+    tile_states[tile_index]        = TileState::Empty;
     all_bombs[tile_index].position = Board::hide_position;
     all_bombs[tile_index].update();
   }
 
   void show_fire(const size_t tile_index) {
-    const size_t row_index    = tile_index / 13;
-    const size_t column_index = tile_index % 13;
-    tile_states[tile_index] = TileState::Fire;
+    const size_t row_index    = calculate_row_index_from_tile_index(tile_index);
+    const size_t column_index = calculate_column_index_from_tile_index(tile_index);
+    tile_states[tile_index]   = TileState::Fire;
     all_fire[tile_index].position = { first_floor_position.x + ((float)column_index * block_offset), first_floor_position.y + (block_offset / 2.0f) - 0.005f, first_floor_position.z + ((float)row_index * block_offset) };
     all_fire[tile_index].update();
   }
 
   void hide_fire(const size_t tile_index) {
-    tile_states[tile_index] = TileState::Empty;
+    tile_states[tile_index]       = TileState::Empty;
     all_fire[tile_index].position = Board::hide_position;
     all_fire[tile_index].update();
   }
@@ -256,9 +280,10 @@ struct Board {
     size_t floor_wall_blocks_index = 0;
 
     /* create walls */
-    const Vector3f top_right_block_position = { first_block_position.x + (14.0f * block_offset), first_block_position.y, first_block_position.z };
-    const Vector3f bottom_left_block_position = { first_block_position.x, first_block_position.y, first_block_position.z + (12.0f * block_offset) };
-    for (size_t i=0; i < 15; ++i) {
+    static_assert( (floor_row_count == 11) && (floor_column_count == 13) ); // if fails then update create walls
+    const Vector3f top_right_block_position   = calculate_top_right_block_position();
+    const Vector3f bottom_left_block_position = calculate_bottom_left_block_position();
+    for (size_t i=0; i < width; ++i) {
       floor_wall_blocks[floor_wall_blocks_index].orientation = identity_orientation;
       floor_wall_blocks[floor_wall_blocks_index].position    = { first_block_position.x + ((float)i * block_offset), first_block_position.y, first_block_position.z };
       floor_wall_blocks[floor_wall_blocks_index].material_id = wall_material_id;
@@ -273,7 +298,7 @@ struct Board {
       floor_wall_blocks[floor_wall_blocks_index].update();
       ++floor_wall_blocks_index;
     }
-    for (size_t i=1; i < 13; ++i) {
+    for (size_t i=1; i < height; ++i) {
       floor_wall_blocks[floor_wall_blocks_index].orientation = identity_orientation;
       floor_wall_blocks[floor_wall_blocks_index].position    = { first_block_position.x, first_block_position.y, first_block_position.z + (i * block_offset) };
       floor_wall_blocks[floor_wall_blocks_index].material_id = wall_material_id;
@@ -378,16 +403,18 @@ struct Board {
   }
 
   Vector3f move(const Vector3f& position) {
-    const Vector3f amount_moved = { position.x - this->first_block_position.x, position.y - this->first_block_position.y, position.z - this->first_block_position.z };
+    const Vector3f displacement = { position.x - this->first_block_position.x, position.y - this->first_block_position.y, position.z - this->first_block_position.z };
     this->first_block_position = position;
 
     size_t floor_wall_blocks_index = 0;
 
-    const Vector3f top_right_block_position = { first_block_position.x + (14.0f * block_offset), first_block_position.y, first_block_position.z };
-    const Vector3f bottom_left_block_position = { first_block_position.x, first_block_position.y, first_block_position.z + (12.0f * block_offset) };
+    static_assert( (width == 15) && (height == 13) ); // if fails then update this method
+    const Vector3f top_right_block_position   = calculate_top_right_block_position();
+    const Vector3f bottom_left_block_position = calculate_bottom_left_block_position();
     for (size_t i=0; i < 15; ++i) {
       floor_wall_blocks[floor_wall_blocks_index].position = { first_block_position.x + ((float)i * block_offset), first_block_position.y, first_block_position.z };
       ++floor_wall_blocks_index;
+
       floor_wall_blocks[floor_wall_blocks_index].position = { first_block_position.x + ((float)i * block_offset), first_block_position.y + block_offset, first_block_position.z };
       ++floor_wall_blocks_index;
     }
@@ -400,7 +427,7 @@ struct Board {
     }
     for (size_t i=1; i < 13; ++i) {
       floor_wall_blocks[floor_wall_blocks_index].orientation = identity_orientation;
-      floor_wall_blocks[floor_wall_blocks_index].position = { top_right_block_position.x, top_right_block_position.y, top_right_block_position.z + ((float)i * block_offset) };
+      floor_wall_blocks[floor_wall_blocks_index].position    = { top_right_block_position.x, top_right_block_position.y, top_right_block_position.z + ((float)i * block_offset) };
       ++floor_wall_blocks_index;
 
       floor_wall_blocks[floor_wall_blocks_index].position = { top_right_block_position.x, top_right_block_position.y + block_offset, top_right_block_position.z + ((float)i * block_offset) };
@@ -414,8 +441,6 @@ struct Board {
       ++floor_wall_blocks_index;
     }
 
-    const size_t floor_row_count    = 11;
-    const size_t floor_column_count = 13;
     first_floor_position = { first_block_position.x + block_offset, first_block_position.y, first_block_position.z + block_offset };
     for (size_t row_index=0; row_index < floor_row_count; ++row_index) {
       for (size_t column_index=0; column_index < floor_column_count; ++column_index) {
@@ -469,7 +494,7 @@ struct Board {
       all_stones[i].update();
     }
 
-    return amount_moved;
+    return displacement;
   }
 };
 
@@ -486,34 +511,35 @@ struct Bomberman {
   AnimationArray animations;
   uint32_t player_id;
   GlobalDirection current_direction;
+  static constexpr float scale = 0.00035f;
 
   void init(const uint32_t player_id) {
     this->player_id             = player_id;
     this->transform.orientation = identity_orientation;
     this->transform.position    = {0.0f,0.0f,0.0f};
-    this->transform.scale       = {0.00035f * global_scale, 0.00035f * global_scale, 0.00035f * global_scale};
-    this->current_direction     = ( (this->player_id == 1) || (this->player_id == 2) ) ? GlobalDirection::Down : GlobalDirection::Up;
+    this->transform.scale       = {scale * global_scale, scale * global_scale, scale * global_scale};
+    this->current_direction     = ( (this->player_id == 0) || (this->player_id == 1) ) ? GlobalDirection::Down : GlobalDirection::Up;
 
     switch (this->player_id) {
-      case 1: {
+      case 0: {
         this->material_id = create_graphics_material(Vector4f{1.0f, 1.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 1.0f, "assets/textures/bomberman.png");
         break;
       }
-      case 2: {
+      case 1: {
         this->material_id = create_graphics_material(Vector4f{1.0f, 0.0f, 0.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 1.0f, "assets/textures/bomberman.png");
         break;
       }
-      case 3: {
+      case 2: {
         this->material_id = create_graphics_material(Vector4f{0.0f, 1.0f, 0.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 1.0f, "assets/textures/bomberman.png");
         break;
       }
-      case 4: {
+      case 3: {
         this->material_id = create_graphics_material(Vector4f{0.0f, 0.0f, 1.0f, 1.0f}, Vector3f{0.0f, 0.0f, 0.0f}, 0.0f, 1.0f, "assets/textures/bomberman.png");
         break;
       }
     }
-    create_graphics_skin_from_glb("assets/models/bomberman.glb", this->skin);
 
+    create_graphics_skin_from_glb("assets/models/bomberman.glb", this->skin);
     this->skin.update_all(material_id);
     this->animations = load_animations_from_glb_file("assets/models/bomberman.glb");
 
@@ -554,13 +580,13 @@ struct Bomberman {
 };
 
 struct SoundSystem {
-  uint32_t place_bomb_sound_ids[4];
-  uint32_t explosion_sound_ids[4];
-  uint32_t win_sound_ids[4];
-  uint32_t death_sound_ids[4];
+  uint32_t place_bomb_sound_ids[player_count];
+  uint32_t explosion_sound_ids[player_count];
+  uint32_t win_sound_ids[player_count];
+  uint32_t death_sound_ids[player_count];
   uint32_t start_bell_sound_id;
   Board*   board_state;
-  Bomberman* players[4];
+  Bomberman* players[player_count];
 
   void init(Board* const board_state, Bomberman* const player_1, Bomberman* const player_2, Bomberman* const player_3, Bomberman* const player_4) {
     this->board_state = board_state;
@@ -569,32 +595,36 @@ struct SoundSystem {
     this->players[2]  = player_3;
     this->players[3]  = player_4;
 
-    for (uint32_t i=0; i < 4; ++i) {
-      place_bomb_sound_ids[i] = create_audio_source("assets/sounds/place_bomb.wav", 4.0f, 16.0f, 0.0f, 1.0f);
-      explosion_sound_ids[i]  = create_audio_source("assets/sounds/explosion.wav", 4.0f, 16.0f, 0.0f, 1.0f);
+    const float attenuation_range_min_meters = 4.0f;
+    const float attenuation_range_max_meters = 16.0f;
+    const float radius_meters                = 0.0f;
+    const float reverb_send_level            = 1.0f;
+
+    for (uint32_t i=0; i < player_count; ++i) {
+      place_bomb_sound_ids[i] = create_audio_source("assets/sounds/place_bomb.wav", attenuation_range_min_meters, attenuation_range_max_meters, radius_meters, reverb_send_level);
+      explosion_sound_ids[i]  = create_audio_source("assets/sounds/explosion.wav", attenuation_range_min_meters, attenuation_range_max_meters, radius_meters, reverb_send_level);
     }
 
-    start_bell_sound_id = create_audio_source("assets/sounds/start_bell.wav", 4.0f, 16.0f, 0.0f, 1.0f);
-    win_sound_ids[0]    = create_audio_source("assets/sounds/white_win.wav", 4.0f, 16.0f, 0.0f, 1.0f);
-    win_sound_ids[1]    = create_audio_source("assets/sounds/red_win.wav", 4.0f, 16.0f, 0.0f, 1.0f);
-    win_sound_ids[2]    = create_audio_source("assets/sounds/green_win.wav", 4.0f, 16.0f, 0.0f, 1.0f);
-    win_sound_ids[3]    = create_audio_source("assets/sounds/blue_win.wav", 4.0f, 16.0f, 0.0f, 1.0f);
-    death_sound_ids[0]  = create_audio_source("assets/sounds/white_death.wav", 4.0f, 16.0f, 0.0f, 1.0f);
-    death_sound_ids[1]  = create_audio_source("assets/sounds/red_death.wav", 4.0f, 16.0f, 0.0f, 1.0f);
-    death_sound_ids[2]  = create_audio_source("assets/sounds/green_death.wav", 4.0f, 16.0f, 0.0f, 1.0f);
-    death_sound_ids[3]  = create_audio_source("assets/sounds/blue_death.wav", 4.0f, 16.0f, 0.0f, 1.0f);
+    start_bell_sound_id = create_audio_source("assets/sounds/start_bell.wav", attenuation_range_min_meters, attenuation_range_max_meters, radius_meters, reverb_send_level);
+    win_sound_ids[0]    = create_audio_source("assets/sounds/white_win.wav", attenuation_range_min_meters, attenuation_range_max_meters, radius_meters, reverb_send_level);
+    win_sound_ids[1]    = create_audio_source("assets/sounds/red_win.wav", attenuation_range_min_meters, attenuation_range_max_meters, radius_meters, reverb_send_level);
+    win_sound_ids[2]    = create_audio_source("assets/sounds/green_win.wav", attenuation_range_min_meters, attenuation_range_max_meters, radius_meters, reverb_send_level);
+    win_sound_ids[3]    = create_audio_source("assets/sounds/blue_win.wav", attenuation_range_min_meters, attenuation_range_max_meters, radius_meters, reverb_send_level);
+    death_sound_ids[0]  = create_audio_source("assets/sounds/white_death.wav", attenuation_range_min_meters, attenuation_range_max_meters, radius_meters, reverb_send_level);
+    death_sound_ids[1]  = create_audio_source("assets/sounds/red_death.wav", attenuation_range_min_meters, attenuation_range_max_meters, radius_meters, reverb_send_level);
+    death_sound_ids[2]  = create_audio_source("assets/sounds/green_death.wav", attenuation_range_min_meters, attenuation_range_max_meters, radius_meters, reverb_send_level);
+    death_sound_ids[3]  = create_audio_source("assets/sounds/blue_death.wav", attenuation_range_min_meters, attenuation_range_max_meters, radius_meters, reverb_send_level);
   }
 
   void play_start_bell() {
-    update_audio_source(start_bell_sound_id, { board_state->first_floor_position.x + (Board::block_offset * 6), board_state->first_floor_position.y, board_state->first_floor_position.z });
+    update_audio_source(start_bell_sound_id, { board_state->first_floor_position.x + (Board::block_offset * float(Board::width / 2)), board_state->first_floor_position.y, board_state->first_floor_position.z });
     play_audio_source(start_bell_sound_id);
   }
 
   void play_place_bomb(const uint32_t player_id) {
     static uint32_t sound_source_id = 0;
 
-    const uint32_t player_index = player_id - 1;
-    update_audio_source(place_bomb_sound_ids[sound_source_id], players[player_index]->transform.position);
+    update_audio_source(place_bomb_sound_ids[sound_source_id], players[player_id]->transform.position);
     play_audio_source(place_bomb_sound_ids[sound_source_id]);
     sound_source_id = (sound_source_id + 1) % std::size(place_bomb_sound_ids);
   }
@@ -602,8 +632,8 @@ struct SoundSystem {
   void play_bomb_explosion(const uint32_t tile_index) {
     static uint32_t sound_source_id = 0;
 
-    const int32_t column_index = tile_index % 13;
-    const int32_t row_index    = tile_index / 13;
+    const int32_t column_index = Board::calculate_column_index_from_tile_index(tile_index);
+    const int32_t row_index    = Board::calculate_row_index_from_tile_index(tile_index);
     const Vector3f position { board_state->first_floor_position.x + (Board::block_offset * (float)column_index), board_state->first_floor_position.y, board_state->first_floor_position.z + (Board::block_offset * (float)row_index) };
 
     update_audio_source(explosion_sound_ids[sound_source_id], position);
@@ -612,24 +642,22 @@ struct SoundSystem {
   }
 
   void play_player_win(const uint32_t player_id) {
-    const uint32_t player_index = player_id - 1;
-    update_audio_source(win_sound_ids[player_index], players[player_index]->transform.position);
-    play_audio_source(win_sound_ids[player_index]);
+    update_audio_source(win_sound_ids[player_id], players[player_id]->transform.position);
+    play_audio_source(win_sound_ids[player_id]);
   }
 
   void play_player_lose(const uint32_t player_id) {
-    const uint32_t player_index = player_id - 1;
-    update_audio_source(death_sound_ids[player_index], players[player_index]->transform.position);
-    play_audio_source(death_sound_ids[player_index]);
+    update_audio_source(death_sound_ids[player_id], players[player_id]->transform.position);
+    play_audio_source(death_sound_ids[player_id]);
   }
 };
 
 struct GameState {
-  std::bitset<4> is_player_alive;
+  std::bitset<player_count> is_player_alive;
   bool is_game_active;
   Board* board_state;
   SoundSystem* sound_state;
-  Bomberman* players[4];
+  Bomberman* players[player_count];
 
   void init(Board* const board_state, SoundSystem* const sound_state, Bomberman* const player_1, Bomberman* const player_2, Bomberman* const player_3, Bomberman* const player_4) {
     this->board_state = board_state;
@@ -649,14 +677,12 @@ struct GameState {
   }
 
   void eliminate_player(const uint32_t player_id) {
-    const uint32_t player_index = player_id - 1;
-
-    is_player_alive[player_index] = false;
+    is_player_alive[player_id] = false;
     if (is_player_alive.count() == 1) {
       for (uint32_t i=0; i < is_player_alive.size(); ++i) {
         if (is_player_alive[i]) {
           players[i]->skin.play_animation(players[i]->animations.first_animation + Bomberman::dancing_animation_offset, 1.0f, true);
-          sound_state->play_player_win(i + 1);
+          sound_state->play_player_win(i);
           break;
         }
       }
@@ -676,13 +702,13 @@ struct MovementSystem {
 
   Board* board_state;
   GameState* current_game_state;
-  std::bitset<8> is_player_moving_bits; // first half player is moving; second half player has chained move
-  PlayerMovementState player_movement_states[4];
-  Bomberman::GlobalDirection chain_move_directions[4];
+  std::bitset<player_count * 2> is_player_moving_bits; // first half player is moving; second half player has chained move
+  PlayerMovementState player_movement_states[player_count];
+  Bomberman::GlobalDirection chain_move_directions[player_count];
 
   void reset(GameState* const current_game_state, Board* const board_state, Bomberman* const player_1, Bomberman* const player_2, Bomberman* const player_3, Bomberman* const player_4) {
     this->current_game_state = current_game_state;
-    this->board_state = board_state;
+    this->board_state        = board_state;
 
     player_movement_states[0].player = player_1;
     player_movement_states[1].player = player_2;
@@ -694,6 +720,7 @@ struct MovementSystem {
     player_movement_states[2].player->skin.play_animation(player_movement_states[2].player->animations.first_animation + Bomberman::idle_animation_offset, 1.0f, true);
     player_movement_states[3].player->skin.play_animation(player_movement_states[3].player->animations.first_animation + Bomberman::idle_animation_offset, 1.0f, true);
 
+    static_assert( (Board::height == 13) && (Board::width == 15) ); // update current and target tile indexes if assert fails
     player_movement_states[0].current_tile_index = 0;
     player_movement_states[0].target_tile_index  = 0;
     player_movement_states[1].current_tile_index = 12;
@@ -726,36 +753,29 @@ struct MovementSystem {
   }
 
   bool move_player(const uint32_t player_id, const Bomberman::GlobalDirection direction) {
-    const uint32_t player_index = player_id - 1;
-    PlayerMovementState& movement_state = player_movement_states[player_index];
-    if (!current_game_state->is_player_alive[player_index] || !current_game_state->is_game_active) return false;
+    PlayerMovementState& movement_state = player_movement_states[player_id];
+    if (!current_game_state->is_player_alive[player_id] || !current_game_state->is_game_active) return false;
 
-    if (is_player_moving_bits[player_index]) {
-      const Vector3f total_distance = { movement_state.target_position.x - movement_state.initial_position.x,
-                                        0.0f,
-                                        movement_state.target_position.z - movement_state.initial_position.z
-                                      };
-      const Vector3f current_distance = { movement_state.player->transform.position.x - movement_state.initial_position.x,
-                                          0.0f,
-                                          movement_state.player->transform.position.z - movement_state.initial_position.z
-                                        };
-      const float chain_threshold = 0.8f;
-      is_player_moving_bits[player_index + 4] = ( (current_distance.x != 0.0f) && ((current_distance.x / total_distance.x) > chain_threshold) || 
-                                                  (current_distance.z != 0.0f) && ((current_distance.z / total_distance.z) > chain_threshold));
-      chain_move_directions[player_index] = direction;
+    if (is_player_moving_bits[player_id]) {
+      const Vector3f total_distance        = { movement_state.target_position.x - movement_state.initial_position.x, 0.0f, movement_state.target_position.z - movement_state.initial_position.z };
+      const Vector3f current_distance      = { movement_state.player->transform.position.x - movement_state.initial_position.x, 0.0f, movement_state.player->transform.position.z - movement_state.initial_position.z };
+      const float chain_threshold          = 0.8f;
+      is_player_moving_bits[player_id + player_count] = ( (current_distance.x != 0.0f) && ((current_distance.x / total_distance.x) > chain_threshold) || 
+                                               (current_distance.z != 0.0f) && ((current_distance.z / total_distance.z) > chain_threshold) );
+      chain_move_directions[player_id] = direction;
       return false;
     }
 
-    const size_t row_index    = movement_state.current_tile_index / 13;
-    const size_t column_index = movement_state.current_tile_index % 13;
+    const size_t row_index    = Board::calculate_row_index_from_tile_index(movement_state.current_tile_index);
+    const size_t column_index = Board::calculate_column_index_from_tile_index(movement_state.current_tile_index);
     uint32_t target_tile_index;
     Vector3f position_offset = {0.0f, 0.0f, 0.0f};
     if (direction == Bomberman::GlobalDirection::Up) {
       if (row_index == 0) return false;
-      target_tile_index = movement_state.current_tile_index - 13;
+      target_tile_index = movement_state.current_tile_index - Board::floor_column_count;
       position_offset.z -= board_state->Board::block_offset;
     } else if (direction == Bomberman::GlobalDirection::Right) {
-      if (column_index == 12 ) return false;
+      if (column_index == (Board::floor_column_count - 1) ) return false;
       target_tile_index = movement_state.current_tile_index + 1;
       position_offset.x += board_state->Board::block_offset;
     } else if (direction == Bomberman::GlobalDirection::Left) {
@@ -763,16 +783,16 @@ struct MovementSystem {
       target_tile_index = movement_state.current_tile_index - 1;
       position_offset.x -= board_state->Board::block_offset;
     } else if (direction == Bomberman::GlobalDirection::Down) {
-      if (row_index == 10) return false;
-      target_tile_index = movement_state.current_tile_index + 13;
+      if (row_index == (Board::floor_row_count - 1)) return false;
+      target_tile_index = movement_state.current_tile_index + Board::floor_column_count;
       position_offset.z += board_state->Board::block_offset;
     }
 
     if (board_state->tile_states[target_tile_index] != Board::TileState::Empty) return false;
-    for (uint32_t i=0; i < 4; ++i) {
-      if (i == player_index) continue;
+    for (uint32_t i=0; i < player_count; ++i) {
+      if (i == player_id) continue;
       if (player_movement_states[i].current_tile_index == target_tile_index) return false;
-      if (player_movement_states[i].target_tile_index == target_tile_index) return false;
+      if (player_movement_states[i].target_tile_index == target_tile_index)  return false;
     }
 
     movement_state.target_tile_index         = target_tile_index;
@@ -780,23 +800,24 @@ struct MovementSystem {
     movement_state.target_position           = { movement_state.initial_position.x + position_offset.x, movement_state.initial_position.y + position_offset.y, movement_state.initial_position.z + position_offset.z };
     movement_state.player->current_direction = direction;
 
-    is_player_moving_bits[player_index] = true;
+    is_player_moving_bits[player_id] = true;
     return true;
   }
 
   void update() {
-    for (uint32_t i=0; i < 4; ++i) {
+    for (uint32_t i=0; i < player_count; ++i) {
       if (is_player_moving_bits[i] && current_game_state->is_player_alive[i]) {
-        const Vector3f direction = { player_movement_states[i].target_position.x - player_movement_states[i].initial_position.x, 0.0f, player_movement_states[i].target_position.z - player_movement_states[i].initial_position.z };
-        const bool is_moving_x_axis = direction.x != 0.0f;
-        const float direction_sign = (static_cast<float>(direction.x > 0.0f || direction.z > 0.0f) * 1.0f) + (static_cast<float>(direction.x < 0.0f || direction.z < 0.0f) * -1.0f);
-        constexpr float tiles_per_second = 4.0f;
-        const Vector3f velocity = { (board_state->Board::block_offset * tiles_per_second) * delta_time_seconds * direction_sign * static_cast<float>(is_moving_x_axis), 0.0f, (board_state->Board::block_offset * tiles_per_second) * delta_time_seconds * direction_sign * static_cast<float>(!is_moving_x_axis) };
-        Vector3f& current_position = player_movement_states[i].player->transform.position;
-        current_position.x += velocity.x;
-        current_position.z += velocity.z;
-
         PlayerMovementState& movement_state = player_movement_states[i];
+        const Vector3f direction         = { movement_state.target_position.x - movement_state.initial_position.x, 0.0f, movement_state.target_position.z - movement_state.initial_position.z };
+        const bool is_moving_x_axis      = direction.x != 0.0f;
+        const float direction_sign       = (static_cast<float>(direction.x > 0.0f || direction.z > 0.0f) * 1.0f) + (static_cast<float>(direction.x < 0.0f || direction.z < 0.0f) * -1.0f);
+        constexpr float tiles_per_second = 4.0f;
+
+        const Vector3f velocity    = { (board_state->Board::block_offset * tiles_per_second) * delta_time_seconds * direction_sign * static_cast<float>(is_moving_x_axis), 0.0f, (board_state->Board::block_offset * tiles_per_second) * delta_time_seconds * direction_sign * static_cast<float>(!is_moving_x_axis) };
+        Vector3f& current_position = movement_state.player->transform.position;
+        current_position.x         += velocity.x;
+        current_position.z         += velocity.z;
+
         const Vector3f total_distance   = { movement_state.target_position.x - movement_state.initial_position.x, 0.0f, movement_state.target_position.z - movement_state.initial_position.z };
         const Vector3f current_distance = { movement_state.player->transform.position.x - movement_state.initial_position.x, 0.0f, movement_state.player->transform.position.z - movement_state.initial_position.z };
 
@@ -811,16 +832,16 @@ struct MovementSystem {
         if (reached_destination) {
           const Vector3f difference = { current_position.x - movement_state.target_position.x, 0.0f, current_position.z - movement_state.target_position.z };
 
-          is_player_moving_bits[i] = false;
-          player_movement_states[i].player->transform.position = movement_state.target_position;
-          movement_state.current_tile_index = movement_state.target_tile_index;
+          is_player_moving_bits[i]                  = false;
+          movement_state.player->transform.position = movement_state.target_position;
+          movement_state.current_tile_index         = movement_state.target_tile_index;
 
-          if (is_player_moving_bits[i + 4]) { // check if chained move
+          if (is_player_moving_bits[i + player_count]) { // check if chained move
             if ( this->move_player(movement_state.player->player_id, chain_move_directions[i]) ) {
-              const Vector3f chain_direction = { player_movement_states[i].target_position.x - player_movement_states[i].initial_position.x, 0.0f, player_movement_states[i].target_position.z - player_movement_states[i].initial_position.z };
+              const Vector3f chain_direction    = { movement_state.target_position.x - movement_state.initial_position.x, 0.0f, movement_state.target_position.z - movement_state.initial_position.z };
               const bool chain_is_moving_x_axis = chain_direction.x != 0.0f;
-              const float chain_direction_sign = (static_cast<float>(chain_direction.x > 0.0f || chain_direction.z > 0.0f) * 1.0f) + (static_cast<float>(chain_direction.x < 0.0f || chain_direction.z < 0.0f) * -1.0f);
-              const float difference_magnitude = abs(difference.x + difference.z);
+              const float chain_direction_sign  = (static_cast<float>(chain_direction.x > 0.0f || chain_direction.z > 0.0f) * 1.0f) + (static_cast<float>(chain_direction.x < 0.0f || chain_direction.z < 0.0f) * -1.0f);
+              const float difference_magnitude  = abs(difference.x + difference.z);
               current_position.x += (difference_magnitude * static_cast<float>(chain_is_moving_x_axis) * chain_direction_sign);
               current_position.z += (difference_magnitude * static_cast<float>(!chain_is_moving_x_axis) * chain_direction_sign);
 
@@ -830,18 +851,18 @@ struct MovementSystem {
                                                ( (chain_direction.z < 0.0f) && (current_position.z <= movement_state.target_position.z) );
 
               if (chain_reached_destination) {
-                is_player_moving_bits[i] = false;
-                player_movement_states[i].player->transform.position = movement_state.target_position;
-                movement_state.current_tile_index = movement_state.target_tile_index;
-                player_movement_states[i].player->skin.play_animation(player_movement_states[i].player->animations.first_animation + Bomberman::idle_animation_offset, 1.0f, true);
+                is_player_moving_bits[i]                  = false;
+                movement_state.player->transform.position = movement_state.target_position;
+                movement_state.current_tile_index         = movement_state.target_tile_index;
+                movement_state.player->skin.play_animation(movement_state.player->animations.first_animation + Bomberman::idle_animation_offset, 1.0f, true);
               }
 
-              is_player_moving_bits[i + 4] = false;
+              is_player_moving_bits[i + player_count] = false;
             } else {  // player has move chained but move unsuccessful
-              player_movement_states[i].player->skin.play_animation(player_movement_states[i].player->animations.first_animation + Bomberman::idle_animation_offset, 1.0f, true);
+              movement_state.player->skin.play_animation(movement_state.player->animations.first_animation + Bomberman::idle_animation_offset, 1.0f, true);
             }
           } else {  // player has no move chained
-            player_movement_states[i].player->skin.play_animation(player_movement_states[i].player->animations.first_animation + Bomberman::idle_animation_offset, 1.0f, true);
+            movement_state.player->skin.play_animation(movement_state.player->animations.first_animation + Bomberman::idle_animation_offset, 1.0f, true);
           }
         }
       }
@@ -854,12 +875,12 @@ struct BombSystem {
   Board* board_state;
   MovementSystem* movement_state;
   SoundSystem* sound_state;
-  std::bitset<143> is_bomb_active_bits;
-  std::bitset<143> is_fire_active_bits;
-  float timers[143];
+  std::bitset<Board::floor_row_count * Board::floor_column_count> is_bomb_active_bits;
+  std::bitset<Board::floor_row_count * Board::floor_column_count> is_fire_active_bits;
+  float timers[Board::floor_row_count * Board::floor_column_count];
   const float detonation_time_seconds = 3.0f;
   const float explosion_time_seconds  = 1.0f;
-  const uint32_t blast_radius         = 2;
+  const uint32_t blast_radius_tiles   = 2;
 
   void reset(GameState* const current_game_state, Board* const board_state, MovementSystem* const movement_state, SoundSystem* const sound_state) {
     this->current_game_state = current_game_state;
@@ -868,15 +889,12 @@ struct BombSystem {
     this->sound_state        = sound_state;
     is_bomb_active_bits.reset();
     is_fire_active_bits.reset();
-    for (uint32_t i=0; i < 143; ++i) {
-      timers[i] = 0.0f;
-    }
+    for (uint32_t i=0; i < (Board::floor_row_count * Board::floor_column_count); ++i) timers[i] = 0.0f;
   }
 
   void place_bomb(const uint32_t player_id) {
-    const uint32_t player_index = player_id - 1;
-    const uint32_t tile_index = movement_state->player_movement_states[player_index].current_tile_index;
-    if (!current_game_state->is_player_alive[player_index]) return;
+    const uint32_t tile_index = movement_state->player_movement_states[player_id].current_tile_index;
+    if (!current_game_state->is_player_alive[player_id]) return;
     if (board_state->tile_states[tile_index] == Board::TileState::Bomb) return;
 
     board_state->show_bomb(tile_index);
@@ -886,27 +904,31 @@ struct BombSystem {
   }
 
   void update() {
-    for (uint32_t tile_index=0; tile_index < 143; ++tile_index) {
-      uint32_t loop_tile_index     = tile_index;
-      bool fire_created_this_frame = false;
-      bool chained_explosion       = false;
+    for (uint32_t tile_index=0; tile_index < (Board::floor_row_count * Board::floor_column_count); ++tile_index) {
+      uint32_t chain_loop_tile_index = tile_index;
+      bool fire_created_this_frame   = false;
+      bool chained_explosion         = false;
 
       if (is_bomb_active_bits[tile_index]) {
         board_state->all_bombs[tile_index].update();
         timers[tile_index] += delta_time_seconds;
+
         if (timers[tile_index] >= detonation_time_seconds) {
           board_state->hide_bomb(tile_index);
           is_bomb_active_bits[tile_index] = false;
-          timers[tile_index] = timers[tile_index] - detonation_time_seconds;  // timer is being used for fire now
-          bool render_fire = timers[tile_index] < explosion_time_seconds;
-          fire_created_this_frame = true;
+          timers[tile_index]              = timers[tile_index] - detonation_time_seconds;  // timer is being used for fire now
+          bool render_fire                = timers[tile_index] < explosion_time_seconds;
+          fire_created_this_frame         = true;
 
-          const int32_t column_index = tile_index % 13;
-          const int32_t row_index    = tile_index / 13;
+          static_assert( (Board::floor_row_count == 11) && (Board::floor_column_count == 13) ); // if fails then update this method
+
+          const int32_t column_index = Board::calculate_column_index_from_tile_index(tile_index);
+          const int32_t row_index    = Board::calculate_row_index_from_tile_index(tile_index);
 
           uint32_t blast_up_count = 0;
-          for (int32_t i=1; i <= int32_t(blast_radius); ++i) {
-            const int32_t target_tile_index = int32_t(tile_index) + (i * int32_t(-13));
+          for (int32_t i=1; i <= int32_t(blast_radius_tiles); ++i) {
+            const int32_t target_tile_index = int32_t(tile_index) + (i * int32_t(-1 * Board::floor_column_count));
+
             if ( (row_index - i) < 0 ) break;
             if (board_state->tile_states[target_tile_index] == Board::TileState::Stone) break;
 
@@ -916,8 +938,9 @@ struct BombSystem {
             if ( (target_tile_index == movement_state->player_movement_states[0].current_tile_index) || (target_tile_index == movement_state->player_movement_states[1].current_tile_index) || (target_tile_index == movement_state->player_movement_states[2].current_tile_index) || (target_tile_index == movement_state->player_movement_states[3].current_tile_index) ) break;
           }
           uint32_t blast_down_count = 0;
-          for (int32_t i=1; i <= int32_t(blast_radius); ++i) {
-            const int32_t target_tile_index = int32_t(tile_index) + (i * int32_t(13));
+          for (int32_t i=1; i <= int32_t(blast_radius_tiles); ++i) {
+            const int32_t target_tile_index = int32_t(tile_index) + (i * int32_t(Board::floor_column_count));
+
             if ( (row_index + i) > 10 ) break;
             if (board_state->tile_states[target_tile_index] == Board::TileState::Stone) break;
 
@@ -927,8 +950,9 @@ struct BombSystem {
             if ( (target_tile_index == movement_state->player_movement_states[0].current_tile_index) || (target_tile_index == movement_state->player_movement_states[1].current_tile_index) || (target_tile_index == movement_state->player_movement_states[2].current_tile_index) || (target_tile_index == movement_state->player_movement_states[3].current_tile_index) ) break;
           }
           uint32_t blast_right_count = 0;
-          for (int32_t i=1; i <= int32_t(blast_radius); ++i) {
+          for (int32_t i=1; i <= int32_t(blast_radius_tiles); ++i) {
             const int32_t target_tile_index = int32_t(tile_index) + i;
+
             if ( (column_index + i) > 12 ) break;
             if (board_state->tile_states[target_tile_index] == Board::TileState::Stone) break;
 
@@ -938,8 +962,9 @@ struct BombSystem {
             if ( (target_tile_index == movement_state->player_movement_states[0].current_tile_index) || (target_tile_index == movement_state->player_movement_states[1].current_tile_index) || (target_tile_index == movement_state->player_movement_states[2].current_tile_index) || (target_tile_index == movement_state->player_movement_states[3].current_tile_index) ) break;
           }
           uint32_t blast_left_count = 0;
-          for (int32_t i=1; i <= int32_t(blast_radius); ++i) {
+          for (int32_t i=1; i <= int32_t(blast_radius_tiles); ++i) {
             const int32_t target_tile_index = int32_t(tile_index) - i;
+
             if ( (column_index - i) < 0 ) break;
             if (board_state->tile_states[target_tile_index] == Board::TileState::Stone) break;
 
@@ -957,38 +982,23 @@ struct BombSystem {
               }
               case Board::TileState::Bomb: {
                 timers[p_target_tile_index] = detonation_time_seconds + timers[tile_index] - delta_time_seconds; // delta_time_seconds will be added to it again
-                if ( (p_target_tile_index < tile_index) && (p_target_tile_index < loop_tile_index)) {
-                  loop_tile_index   = p_target_tile_index;
-                  chained_explosion = true;
+                if ( (p_target_tile_index < tile_index) && (p_target_tile_index < chain_loop_tile_index)) {
+                  chain_loop_tile_index   = p_target_tile_index;
+                  chained_explosion       = true;
                 }
                 break;
               }
             }
 
-            if (p_target_tile_index == movement_state->player_movement_states[0].current_tile_index) {
-              current_game_state->eliminate_player(movement_state->player_movement_states[0].player->player_id);
-              movement_state->player_movement_states[0].player->skin.play_animation(movement_state->player_movement_states[0].player->animations.first_animation + Bomberman::death_animation_offset);
-              movement_state->player_movement_states[0].current_tile_index = 1000;
-              movement_state->player_movement_states[0].target_tile_index  = 1000;
-              sound_state->play_player_lose(1);
-            } else if (p_target_tile_index == movement_state->player_movement_states[1].current_tile_index) {
-              current_game_state->eliminate_player(movement_state->player_movement_states[1].player->player_id);
-              movement_state->player_movement_states[1].player->skin.play_animation(movement_state->player_movement_states[0].player->animations.first_animation + Bomberman::death_animation_offset);
-              movement_state->player_movement_states[1].current_tile_index = 1000;
-              movement_state->player_movement_states[1].target_tile_index  = 1000;
-              sound_state->play_player_lose(2);
-            } else if (p_target_tile_index == movement_state->player_movement_states[2].current_tile_index) {
-              current_game_state->eliminate_player(movement_state->player_movement_states[2].player->player_id);
-              movement_state->player_movement_states[2].player->skin.play_animation(movement_state->player_movement_states[0].player->animations.first_animation + Bomberman::death_animation_offset);
-              movement_state->player_movement_states[2].current_tile_index = 1000;
-              movement_state->player_movement_states[2].target_tile_index  = 1000;
-              sound_state->play_player_lose(3);
-            } else if (p_target_tile_index == movement_state->player_movement_states[3].current_tile_index) {
-              current_game_state->eliminate_player(movement_state->player_movement_states[3].player->player_id);
-              movement_state->player_movement_states[3].player->skin.play_animation(movement_state->player_movement_states[0].player->animations.first_animation + Bomberman::death_animation_offset);
-              movement_state->player_movement_states[3].current_tile_index = 1000;
-              movement_state->player_movement_states[3].target_tile_index  = 1000;
-              sound_state->play_player_lose(4);
+            for (uint32_t player_index=0; player_index < player_count; ++player_index) {
+              constexpr uint32_t hide_tile_index = -1;
+              if (p_target_tile_index == movement_state->player_movement_states[player_index].current_tile_index) {
+                current_game_state->eliminate_player(movement_state->player_movement_states[player_index].player->player_id);
+                movement_state->player_movement_states[player_index].player->skin.play_animation(movement_state->player_movement_states[player_index].player->animations.first_animation + Bomberman::death_animation_offset, 1.0f, false);
+                movement_state->player_movement_states[player_index].current_tile_index = hide_tile_index;
+                movement_state->player_movement_states[player_index].target_tile_index  = hide_tile_index;
+                sound_state->play_player_lose(player_index);
+              }
             }
 
             if (render_fire) {
@@ -1000,11 +1010,11 @@ struct BombSystem {
           explode_tile(tile_index);
 
           for (uint32_t i=1; i <= blast_up_count; ++i) {
-            const uint32_t target_tile_index = tile_index - (i * 13);
+            const uint32_t target_tile_index = tile_index - (i * Board::floor_column_count);
             explode_tile(target_tile_index);
           }
           for (uint32_t i=1; i <= blast_down_count; ++i) {
-            const uint32_t target_tile_index = tile_index + (i * 13);
+            const uint32_t target_tile_index = tile_index + (i * Board::floor_column_count);
             explode_tile(target_tile_index);
           }
           for (uint32_t i=1; i <= blast_right_count; ++i) {
@@ -1023,6 +1033,7 @@ struct BombSystem {
       if (is_fire_active_bits[tile_index]) {
         board_state->all_fire[tile_index].update();
         timers[tile_index] += (delta_time_seconds * static_cast<float>(!fire_created_this_frame));
+
         if (timers[tile_index] >= explosion_time_seconds) {
           is_fire_active_bits[tile_index] = false;
           board_state->hide_fire(tile_index);
@@ -1030,11 +1041,12 @@ struct BombSystem {
       }
 
       if (chained_explosion) {
-        tile_index = loop_tile_index;
+        tile_index = chain_loop_tile_index;
       }
     }
   }
 };
+
 
 HandControllers* hands          = new HandControllers();
 Board* board                    = new Board();
@@ -1062,10 +1074,10 @@ void SimulationState::init() {
   directional_light.update_color({1.0f, 1.0f, 1.0f});
   update_ambient_light_intensity(0.25f);
 
-  player_1->init(1);
-  player_2->init(2);
-  player_3->init(3);
-  player_4->init(4);
+  player_1->init(0);
+  player_2->init(1);
+  player_3->init(2);
+  player_4->init(3);
 
   board->init();
   player_1->transform.position = board->player_1_start_position;
@@ -1088,17 +1100,16 @@ void SimulationState::update() {
 
   constexpr float movement_threshold = 0.5f;
   bool player_moved = false;
-  if (input_state.move_player.x > movement_threshold) { // move right
+  if (input_state.move_player.x > movement_threshold) {
     player_moved = movement_system->move_player(player_1->player_id, Bomberman::GlobalDirection::Right);
-  } else if ( input_state.move_player.x < (-1.0f * movement_threshold) ) {  // move left
+  } else if ( input_state.move_player.x < (-1.0f * movement_threshold) ) {
     player_moved = movement_system->move_player(player_1->player_id, Bomberman::GlobalDirection::Left);
-  } else if ( input_state.move_player.y > movement_threshold ) {  // move up
+  } else if ( input_state.move_player.y > movement_threshold ) {
     player_moved = movement_system->move_player(player_1->player_id, Bomberman::GlobalDirection::Up);
-  } else if ( input_state.move_player.y < (-1.0 * movement_threshold) ) {  // move down
+  } else if ( input_state.move_player.y < (-1.0 * movement_threshold) ) {
     player_moved = movement_system->move_player(player_1->player_id, Bomberman::GlobalDirection::Down);
   }
   movement_system->update();
-
   if (player_moved) player_1->skin.play_animation(player_1->animations.first_animation + Bomberman::running_animation_offset, 1.65f, true);
 
   if (input_state.action_button || input_state.gamepad_action_button) {
@@ -1118,13 +1129,14 @@ void SimulationState::update() {
     }
   }
 
-  if (input_state.move_board && ( !movement_system->is_player_moving_bits[0] && !movement_system->is_player_moving_bits[1] && !movement_system->is_player_moving_bits[2] && !movement_system->is_player_moving_bits[3] )) {
-    const Vector3f moved_vector = board->move(input_state.right_hand_transform.position);
+  const bool players_are_not_moving = !movement_system->is_player_moving_bits[0] && !movement_system->is_player_moving_bits[1] && !movement_system->is_player_moving_bits[2] && !movement_system->is_player_moving_bits[3];
+  if (input_state.move_board && players_are_not_moving) {
+    const Vector3f displacement = board->move(input_state.right_hand_transform.position);
 
-    player_1->transform.position = add_vectors(player_1->transform.position, moved_vector);
-    player_2->transform.position = add_vectors(player_2->transform.position, moved_vector);
-    player_3->transform.position = add_vectors(player_3->transform.position, moved_vector);
-    player_4->transform.position = add_vectors(player_4->transform.position, moved_vector);
+    player_1->transform.position = add_vectors(player_1->transform.position, displacement);
+    player_2->transform.position = add_vectors(player_2->transform.position, displacement);
+    player_3->transform.position = add_vectors(player_3->transform.position, displacement);
+    player_4->transform.position = add_vectors(player_4->transform.position, displacement);
   }
 
   hands->update();
