@@ -198,7 +198,7 @@ struct Board {
       bool is_tile_stone = tile_states[tile_index] == TileState::Stone;
       if ( is_tile_stone || is_tile_in_player_spawn_space ) continue;
 
-      int random_number = (rand() % 10 + 1);
+      const int random_number = (rand() % 10 + 1);
       if (random_number <= 7) {
         tile_states[tile_index] = TileState::Brick;
         show_brick(tile_index);
@@ -1047,6 +1047,123 @@ struct BombSystem {
   }
 };
 
+struct AISystem {
+  struct Behavior {
+    enum class Action : uint8_t { ArbitraryMove, PlaceBomb, AvoidBlast };
+
+    Board* board_state;
+    MovementSystem* movement_state;
+    BombSystem* bomb_state;
+    Bomberman* player;
+    Action current_action  = Action::ArbitraryMove;
+    Action previous_action = Action::ArbitraryMove;
+    Bomberman::GlobalDirection target_direction;
+    uint32_t current_move_count;
+    uint32_t target_move_count;
+
+    void decide() {
+      if (previous_action == Action::ArbitraryMove) {
+        current_action = Action::PlaceBomb;
+      } else if (previous_action == Action::PlaceBomb) {
+        current_action = Action::AvoidBlast;
+      } else if (previous_action == Action::AvoidBlast) {
+        current_action     = Action::ArbitraryMove;
+        current_move_count = 0;
+        target_move_count  = (rand() % 8 + 1);
+
+        switch(rand() % 4) {
+          case 0 : {
+            target_direction = Bomberman::GlobalDirection::Up;
+            break;
+          }
+          case 1 : {
+            target_direction = Bomberman::GlobalDirection::Down;
+            break;
+          }
+          case 2 : {
+            target_direction = Bomberman::GlobalDirection::Left;
+            break;
+          }
+          case 3 : {
+            target_direction = Bomberman::GlobalDirection::Right;
+            break;
+          }
+        }
+      }
+    }
+
+    bool update() {
+      switch (current_action) {
+        case Action::ArbitraryMove : {
+          if (!movement_state->is_player_moving_bits[player->player_id]) {
+            if (current_move_count >= target_move_count) {
+              previous_action = Action::ArbitraryMove;
+              return false;
+            } else {
+              if (movement_state->move_player(player->player_id, target_direction)) {
+                ++current_move_count;
+                player->skin.play_animation(player->animations.first_animation + Bomberman::running_animation_offset, 1.65f, true);
+              } else {
+                if (current_move_count == 0) {  // invalid move so try again
+                  previous_action = Action::AvoidBlast;
+                  decide();
+                  update();
+                  return true;
+                } else {
+                  previous_action = Action::ArbitraryMove;
+                  return false;
+                }
+              }
+            }
+          }
+          break;
+        }
+        case Action::PlaceBomb : {
+          bomb_state->place_bomb(player->player_id);
+          previous_action = Action::PlaceBomb;
+          return false;
+        }
+        case Action::AvoidBlast : {
+          previous_action = Action::AvoidBlast;
+          return false;
+
+          break;
+        }
+      }
+
+      return true;
+    }
+  };
+
+  std::bitset<player_count> has_behavior_assigned;
+  Behavior behavior[player_count];
+
+  void reset(Board* const board_state, MovementSystem* const movement_state, BombSystem* const bomb_state, Bomberman* const player_2, Bomberman* const player_3, Bomberman* const player_4) {
+    behavior[1].player             = player_2;
+    behavior[2].player             = player_3;
+    behavior[3].player             = player_4;
+
+    for (uint32_t i=1; i < player_count; ++i) {
+      behavior[i].board_state     = board_state;
+      behavior[i].movement_state  = movement_state;
+      behavior[i].bomb_state      = bomb_state;
+      behavior[i].previous_action = Behavior::Action::AvoidBlast;
+      behavior[i].decide();
+    }
+  }
+
+  void update() {
+    for (uint32_t i=1; i < player_count; ++i) {
+      if (has_behavior_assigned[i]) {
+        has_behavior_assigned[i] = behavior[i].update();
+      } else {
+        behavior[i].decide();
+        has_behavior_assigned[i] = true;
+      }
+    }
+  }
+};
+
 
 HandControllers* hands          = new HandControllers();
 Board* board                    = new Board();
@@ -1058,6 +1175,7 @@ MovementSystem* movement_system = new MovementSystem();
 BombSystem* bomb_system         = new BombSystem();
 GameState*  game_state          = new GameState();
 SoundSystem* sound_system       = new SoundSystem();
+AISystem* ai_system             = new AISystem();
 
 bool is_not_first_game = false;
 
@@ -1089,6 +1207,7 @@ void SimulationState::init() {
   game_state->init(board, sound_system, player_1, player_2, player_3, player_4);
   movement_system->reset(game_state, board, player_1, player_2, player_3, player_4);
   bomb_system->reset(game_state, board, movement_system, sound_system);
+  ai_system->reset(board, movement_system, bomb_system, player_2, player_3, player_4);
 }
 
 void SimulationState::update() {
@@ -1123,6 +1242,7 @@ void SimulationState::update() {
       } else {
         is_not_first_game = true;
       }
+      ai_system->reset(board, movement_system, bomb_system, player_2, player_3, player_4);
       game_state->restart_game();
       sound_system->play_start_bell();
       return;
@@ -1145,6 +1265,9 @@ void SimulationState::update() {
   player_3->update();
   player_4->update();
   bomb_system->update();
+  if (game_state->is_game_active && game_state->is_player_alive[0]) {
+    ai_system->update();
+  }
 }
 
 void SimulationState::exit() {
