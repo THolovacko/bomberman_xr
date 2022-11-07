@@ -705,6 +705,7 @@ struct MovementSystem {
   std::bitset<player_count * 2> is_player_moving_bits; // first half player is moving; second half player has chained move
   PlayerMovementState player_movement_states[player_count];
   Bomberman::GlobalDirection chain_move_directions[player_count];
+  static constexpr float chain_threshold = 0.8f;
 
   void reset(GameState* const current_game_state, Board* const board_state, Bomberman* const player_1, Bomberman* const player_2, Bomberman* const player_3, Bomberman* const player_4) {
     this->current_game_state = current_game_state;
@@ -759,9 +760,8 @@ struct MovementSystem {
     if (is_player_moving_bits[player_id]) {
       const Vector3f total_distance        = { movement_state.target_position.x - movement_state.initial_position.x, 0.0f, movement_state.target_position.z - movement_state.initial_position.z };
       const Vector3f current_distance      = { movement_state.player->transform.position.x - movement_state.initial_position.x, 0.0f, movement_state.player->transform.position.z - movement_state.initial_position.z };
-      const float chain_threshold          = 0.8f;
       is_player_moving_bits[player_id + player_count] = ( (current_distance.x != 0.0f) && ((current_distance.x / total_distance.x) > chain_threshold) || 
-                                               (current_distance.z != 0.0f) && ((current_distance.z / total_distance.z) > chain_threshold) );
+                                                          (current_distance.z != 0.0f) && ((current_distance.z / total_distance.z) > chain_threshold) );
       chain_move_directions[player_id] = direction;
       return false;
     }
@@ -1055,11 +1055,11 @@ struct AISystem {
     MovementSystem* movement_state;
     BombSystem* bomb_state;
     Bomberman* player;
-    Action current_action  = Action::ArbitraryMove;
-    Action previous_action = Action::ArbitraryMove;
+    Action current_action;
+    Action previous_action;
     Bomberman::GlobalDirection target_direction;
-    uint32_t current_move_count;
-    uint32_t target_move_count;
+    float current_move_time;
+    float target_move_time;
 
     void decide() {
       if (previous_action == Action::ArbitraryMove) {
@@ -1067,9 +1067,10 @@ struct AISystem {
       } else if (previous_action == Action::PlaceBomb) {
         current_action = Action::AvoidBlast;
       } else if (previous_action == Action::AvoidBlast) {
-        current_action     = Action::ArbitraryMove;
-        current_move_count = 0;
-        target_move_count  = (rand() % 8 + 1);
+        current_action    = Action::ArbitraryMove;
+        current_move_time = 0.0f;
+        target_move_time  = static_cast<float>(rand() % 2);
+        target_move_time  += static_cast<float>(rand() % 100) / 100.0f;
 
         switch(rand() % 4) {
           case 0 : {
@@ -1095,39 +1096,33 @@ struct AISystem {
     bool update() {
       switch (current_action) {
         case Action::ArbitraryMove : {
-          if (!movement_state->is_player_moving_bits[player->player_id]) {
-            if (current_move_count >= target_move_count) {
+          if (current_move_time == 0.0f) {
+            if (movement_state->move_player(player->player_id, target_direction)) {
+              player->skin.play_animation(player->animations.first_animation + Bomberman::running_animation_offset, 1.65f, true);
+              current_move_time += 0.00001f;
+            } else {  // invalid move so try again
+              previous_action = Action::AvoidBlast;
+              return false;
+            }
+          } else {
+            current_move_time += delta_time_seconds;
+            if (current_move_time <= target_move_time) {
+              movement_state->move_player(player->player_id, target_direction);
+            } else {
               previous_action = Action::ArbitraryMove;
               return false;
-            } else {
-              if (movement_state->move_player(player->player_id, target_direction)) {
-                ++current_move_count;
-                player->skin.play_animation(player->animations.first_animation + Bomberman::running_animation_offset, 1.65f, true);
-              } else {
-                if (current_move_count == 0) {  // invalid move so try again
-                  previous_action = Action::AvoidBlast;
-                  decide();
-                  update();
-                  return true;
-                } else {
-                  previous_action = Action::ArbitraryMove;
-                  return false;
-                }
-              }
             }
           }
           break;
         }
         case Action::PlaceBomb : {
-          bomb_state->place_bomb(player->player_id);
+          //bomb_state->place_bomb(player->player_id);
           previous_action = Action::PlaceBomb;
           return false;
         }
         case Action::AvoidBlast : {
           previous_action = Action::AvoidBlast;
           return false;
-
-          break;
         }
       }
 
@@ -1139,9 +1134,9 @@ struct AISystem {
   Behavior behavior[player_count];
 
   void reset(Board* const board_state, MovementSystem* const movement_state, BombSystem* const bomb_state, Bomberman* const player_2, Bomberman* const player_3, Bomberman* const player_4) {
-    behavior[1].player             = player_2;
-    behavior[2].player             = player_3;
-    behavior[3].player             = player_4;
+    behavior[1].player = player_2;
+    behavior[2].player = player_3;
+    behavior[3].player = player_4;
 
     for (uint32_t i=1; i < player_count; ++i) {
       behavior[i].board_state     = board_state;
@@ -1228,8 +1223,13 @@ void SimulationState::update() {
   } else if ( input_state.move_player.y < (-1.0 * movement_threshold) ) {
     player_moved = movement_system->move_player(player_1->player_id, Bomberman::GlobalDirection::Down);
   }
-  movement_system->update();
+
+  if (game_state->is_game_active && game_state->is_player_alive[0]) {
+    ai_system->update();
+  }
+
   if (player_moved) player_1->skin.play_animation(player_1->animations.first_animation + Bomberman::running_animation_offset, 1.65f, true);
+  movement_system->update();
 
   if (input_state.action_button || input_state.gamepad_action_button) {
     if (game_state->is_game_active && game_state->is_player_alive[0]) {
@@ -1265,9 +1265,6 @@ void SimulationState::update() {
   player_3->update();
   player_4->update();
   bomb_system->update();
-  if (game_state->is_game_active && game_state->is_player_alive[0]) {
-    ai_system->update();
-  }
 }
 
 void SimulationState::exit() {
