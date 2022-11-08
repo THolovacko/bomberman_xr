@@ -705,7 +705,7 @@ struct MovementSystem {
   std::bitset<player_count * 2> is_player_moving_bits; // first half player is moving; second half player has chained move
   PlayerMovementState player_movement_states[player_count];
   Bomberman::GlobalDirection chain_move_directions[player_count];
-  static constexpr float chain_threshold = 0.8f;
+  std::bitset<4> ai_valid_path_bits[player_count];  // [left, right, up, down]
 
   void reset(GameState* const current_game_state, Board* const board_state, Bomberman* const player_1, Bomberman* const player_2, Bomberman* const player_3, Bomberman* const player_4) {
     this->current_game_state = current_game_state;
@@ -751,13 +751,19 @@ struct MovementSystem {
     player_2->current_direction = Bomberman::GlobalDirection::Down;
     player_3->current_direction = Bomberman::GlobalDirection::Up;
     player_4->current_direction = Bomberman::GlobalDirection::Up;
+
+    ai_valid_path_bits[0].set();
+    ai_valid_path_bits[1].set();
+    ai_valid_path_bits[2].set();
+    ai_valid_path_bits[3].set();
   }
 
-  bool move_player(const uint32_t player_id, const Bomberman::GlobalDirection direction) {
+  bool move_player(const uint32_t player_id, const Bomberman::GlobalDirection direction, const bool is_player_AI=false) {
     PlayerMovementState& movement_state = player_movement_states[player_id];
     if (!current_game_state->is_player_alive[player_id] || !current_game_state->is_game_active) return false;
 
     if (is_player_moving_bits[player_id]) {
+      constexpr float chain_threshold      = 0.8f;
       const Vector3f total_distance        = { movement_state.target_position.x - movement_state.initial_position.x, 0.0f, movement_state.target_position.z - movement_state.initial_position.z };
       const Vector3f current_distance      = { movement_state.player->transform.position.x - movement_state.initial_position.x, 0.0f, movement_state.player->transform.position.z - movement_state.initial_position.z };
       is_player_moving_bits[player_id + player_count] = ( (current_distance.x != 0.0f) && ((current_distance.x / total_distance.x) > chain_threshold) || 
@@ -793,6 +799,45 @@ struct MovementSystem {
       if (i == player_id) continue;
       if (player_movement_states[i].current_tile_index == target_tile_index) return false;
       if (player_movement_states[i].target_tile_index == target_tile_index)  return false;
+    }
+
+    if (is_player_AI) {
+      const size_t target_tile_row_index    = Board::calculate_row_index_from_tile_index(target_tile_index);
+      const size_t target_tile_column_index = Board::calculate_column_index_from_tile_index(target_tile_index);
+
+      const bool is_bomb_leftward  = ( (target_tile_column_index > 0) && (board_state->tile_states[target_tile_index - 1] == Board::TileState::Bomb) ) ||
+                                     ( (target_tile_column_index > 1) && (board_state->tile_states[target_tile_index - 2] == Board::TileState::Bomb) );
+      const bool is_bomb_rightward = ( (target_tile_column_index < (Board::floor_column_count - 1)) && (board_state->tile_states[target_tile_index + 1] == Board::TileState::Bomb) ) ||
+                                     ( (target_tile_column_index < (Board::floor_column_count - 2)) && (board_state->tile_states[target_tile_index + 2] == Board::TileState::Bomb) );
+      const bool is_bomb_upward    = ( (target_tile_row_index > 0) && (board_state->tile_states[target_tile_index - Board::floor_column_count] == Board::TileState::Bomb) ) ||
+                                     ( (target_tile_row_index > 1) && (board_state->tile_states[target_tile_index - (Board::floor_column_count * 2)] == Board::TileState::Bomb) );
+      const bool is_bomb_downward  = ( (target_tile_row_index < (Board::floor_row_count - 1)) && (board_state->tile_states[target_tile_index + Board::floor_column_count] == Board::TileState::Bomb) ) ||
+                                     ( (target_tile_row_index < (Board::floor_row_count - 2)) && (board_state->tile_states[target_tile_index + (Board::floor_column_count * 2)] == Board::TileState::Bomb) );
+
+      switch (direction) {
+        case Bomberman::GlobalDirection::Left : {
+          if (is_bomb_leftward || is_bomb_upward || is_bomb_downward) return false;
+          if (!(ai_valid_path_bits[player_id][0])) return false;
+          break;
+        }
+        case Bomberman::GlobalDirection::Right : {
+          if (is_bomb_rightward || is_bomb_upward || is_bomb_downward) return false;
+          if (!(ai_valid_path_bits[player_id][1])) return false;
+          break;
+        }
+        case Bomberman::GlobalDirection::Up : {
+          if (is_bomb_upward || is_bomb_rightward || is_bomb_leftward) return false;
+          if (!(ai_valid_path_bits[player_id][2])) return false;
+          break;
+        }
+        case Bomberman::GlobalDirection::Down : {
+          if (is_bomb_downward || is_bomb_rightward || is_bomb_leftward) return false;
+          if (!(ai_valid_path_bits[player_id][3])) return false;
+          break;
+        }
+
+        ai_valid_path_bits[player_id].set();
+      }
     }
 
     movement_state.target_tile_index         = target_tile_index;
@@ -837,7 +882,7 @@ struct MovementSystem {
           movement_state.current_tile_index         = movement_state.target_tile_index;
 
           if (is_player_moving_bits[i + player_count]) { // check if chained move
-            if ( this->move_player(movement_state.player->player_id, chain_move_directions[i]) ) {
+            if ( this->move_player(movement_state.player->player_id, chain_move_directions[i], i > 0) ) {
               const Vector3f chain_direction    = { movement_state.target_position.x - movement_state.initial_position.x, 0.0f, movement_state.target_position.z - movement_state.initial_position.z };
               const bool chain_is_moving_x_axis = chain_direction.x != 0.0f;
               const float chain_direction_sign  = (static_cast<float>(chain_direction.x > 0.0f || chain_direction.z > 0.0f) * 1.0f) + (static_cast<float>(chain_direction.x < 0.0f || chain_direction.z < 0.0f) * -1.0f);
@@ -892,10 +937,63 @@ struct BombSystem {
     for (uint32_t i=0; i < (Board::floor_row_count * Board::floor_column_count); ++i) timers[i] = 0.0f;
   }
 
-  void place_bomb(const uint32_t player_id) {
+  void place_bomb(const uint32_t player_id, const bool is_player_AI=false) {
     const uint32_t tile_index = movement_state->player_movement_states[player_id].current_tile_index;
     if (!current_game_state->is_player_alive[player_id]) return;
     if (board_state->tile_states[tile_index] == Board::TileState::Bomb) return;
+
+    if (is_player_AI) {
+      const size_t tile_row_index    = Board::calculate_row_index_from_tile_index(tile_index);
+      const size_t tile_column_index = Board::calculate_column_index_from_tile_index(tile_index);
+
+      const bool leftward_up_escape_path_exists    = ( (tile_column_index > 0) && (board_state->tile_states[tile_index - 1] == Board::TileState::Empty) ) &&
+                                                     ( (tile_row_index > 0) && (board_state->tile_states[tile_index - 1 - Board::floor_column_count] == Board::TileState::Empty) );
+      const bool leftward_down_escape_path_exists  = ( (tile_column_index > 0) && (board_state->tile_states[tile_index - 1] == Board::TileState::Empty) ) &&
+                                                     ( (tile_row_index < (Board::floor_row_count - 1)) && (board_state->tile_states[tile_index - 1 + Board::floor_column_count] == Board::TileState::Empty) );
+      const bool rightward_up_escape_path_exists   = ( (tile_column_index < (Board::floor_column_count - 1)) && (board_state->tile_states[tile_index + 1] == Board::TileState::Empty) ) &&
+                                                     ( (tile_row_index > 0) && (board_state->tile_states[(tile_index + 1) - Board::floor_column_count] == Board::TileState::Empty) );
+      const bool rightward_down_escape_path_exists = ( (tile_column_index < (Board::floor_column_count - 1)) && (board_state->tile_states[tile_index + 1] == Board::TileState::Empty) ) &&
+                                                     ( (tile_row_index < (Board::floor_row_count - 1)) && (board_state->tile_states[tile_index + 1 + Board::floor_column_count] == Board::TileState::Empty) );
+      const bool upward_left_path_exists           = ( (tile_row_index > 0) && (board_state->tile_states[tile_index - Board::floor_column_count] == Board::TileState::Empty) ) &&
+                                                     ( (tile_column_index > 0) && (board_state->tile_states[(tile_index - Board::floor_column_count - 1)] == Board::TileState::Empty) );
+      const bool upward_right_path_exists          = ( (tile_row_index > 0) && (board_state->tile_states[tile_index - Board::floor_column_count] == Board::TileState::Empty) ) &&
+                                                     ( (tile_column_index < (Board::floor_column_count - 1)) && (board_state->tile_states[tile_index - Board::floor_column_count + 1] == Board::TileState::Empty) );
+      const bool downward_left_path_exists         = ( (tile_row_index < (Board::floor_row_count - 1)) && (board_state->tile_states[tile_index + Board::floor_column_count] == Board::TileState::Empty) ) &&
+                                                     ( (tile_column_index > 0) && (board_state->tile_states[tile_index + Board::floor_column_count - 1] == Board::TileState::Empty) );
+      const bool downward_right_path_exists        = ( (tile_row_index < (Board::floor_row_count - 1)) && (board_state->tile_states[tile_index + Board::floor_column_count] == Board::TileState::Empty) ) &&
+                                                     ( (tile_column_index < (Board::floor_column_count - 1)) && (board_state->tile_states[tile_index + Board::floor_column_count + 1] == Board::TileState::Empty) );
+      const bool triple_left_escape_path_exists    = ( (tile_column_index > 2) && (board_state->tile_states[tile_index - 1] == Board::TileState::Empty) ) &&
+                                                     ( (board_state->tile_states[tile_index - 2] == Board::TileState::Empty) ) &&
+                                                     ( (board_state->tile_states[tile_index - 3] == Board::TileState::Empty) );
+      const bool triple_right_escape_path_exists   = ( (tile_column_index < (Board::floor_column_count - 3)) && (board_state->tile_states[tile_index + 1] == Board::TileState::Empty) ) &&
+                                                     ( (board_state->tile_states[tile_index + 2] == Board::TileState::Empty) ) &&
+                                                     ( (board_state->tile_states[tile_index + 3] == Board::TileState::Empty) );
+      const bool triple_up_path_exists             = ( (tile_row_index > 2) && (board_state->tile_states[tile_index - Board::floor_column_count] == Board::TileState::Empty) ) &&
+                                                     ( (board_state->tile_states[tile_index - (Board::floor_column_count * 2)] == Board::TileState::Empty) ) &&
+                                                     ( (board_state->tile_states[tile_index - (Board::floor_column_count * 3)] == Board::TileState::Empty) );
+      const bool triple_down_path_exists           = ( (tile_row_index < (Board::floor_row_count - 3)) && (board_state->tile_states[tile_index + Board::floor_column_count] == Board::TileState::Empty) ) &&
+                                                     ( (board_state->tile_states[tile_index + (Board::floor_column_count * 2)] == Board::TileState::Empty) ) &&
+                                                     ( (board_state->tile_states[tile_index + (Board::floor_column_count * 3)] == Board::TileState::Empty) );
+
+      movement_state->ai_valid_path_bits[player_id][0] = leftward_up_escape_path_exists || leftward_down_escape_path_exists || triple_left_escape_path_exists;
+      movement_state->ai_valid_path_bits[player_id][1] = rightward_up_escape_path_exists || rightward_down_escape_path_exists || triple_right_escape_path_exists;
+      movement_state->ai_valid_path_bits[player_id][2] = upward_left_path_exists || upward_right_path_exists || triple_up_path_exists;
+      movement_state->ai_valid_path_bits[player_id][3] = downward_left_path_exists || downward_right_path_exists || triple_down_path_exists;
+
+      if ( !(leftward_up_escape_path_exists    ||
+             leftward_down_escape_path_exists  ||
+             rightward_up_escape_path_exists   ||
+             rightward_down_escape_path_exists ||
+             upward_left_path_exists           ||
+             upward_right_path_exists          ||
+             downward_left_path_exists         ||
+             downward_right_path_exists        ||
+             triple_left_escape_path_exists    ||
+             triple_right_escape_path_exists   ||
+             triple_up_path_exists             ||
+             triple_down_path_exists
+         ) ) return;
+    }
 
     board_state->show_bomb(tile_index);
     is_bomb_active_bits[tile_index] = true;
@@ -1049,9 +1147,8 @@ struct BombSystem {
 
 struct AISystem {
   struct Behavior {
-    enum class Action : uint8_t { ArbitraryMove, PlaceBomb, AvoidBlast };
+    enum class Action : uint8_t { Move, PlaceBomb };
 
-    Board* board_state;
     MovementSystem* movement_state;
     BombSystem* bomb_state;
     Bomberman* player;
@@ -1062,15 +1159,12 @@ struct AISystem {
     float target_move_time;
 
     void decide() {
-      if (previous_action == Action::ArbitraryMove) {
+      if (previous_action == Action::Move) {
         current_action = Action::PlaceBomb;
       } else if (previous_action == Action::PlaceBomb) {
-        current_action = Action::AvoidBlast;
-      } else if (previous_action == Action::AvoidBlast) {
-        current_action    = Action::ArbitraryMove;
+        current_action    = Action::Move;
         current_move_time = 0.0f;
-        target_move_time  = static_cast<float>(rand() % 2);
-        target_move_time  += static_cast<float>(rand() % 100) / 100.0f;
+        target_move_time  = static_cast<float>(rand() % 150) / 100.0f;
 
         switch(rand() % 4) {
           case 0 : {
@@ -1095,33 +1189,32 @@ struct AISystem {
 
     bool update() {
       switch (current_action) {
-        case Action::ArbitraryMove : {
+        case Action::Move : {
           if (current_move_time == 0.0f) {
-            if (movement_state->move_player(player->player_id, target_direction)) {
+            if (movement_state->move_player(player->player_id, target_direction, true)) {
               player->skin.play_animation(player->animations.first_animation + Bomberman::running_animation_offset, 1.65f, true);
               current_move_time += 0.00001f;
             } else {  // invalid move so try again
-              previous_action = Action::AvoidBlast;
+              previous_action = Action::PlaceBomb;
               return false;
             }
           } else {
             current_move_time += delta_time_seconds;
             if (current_move_time <= target_move_time) {
-              movement_state->move_player(player->player_id, target_direction);
+              const bool is_player_idle = !movement_state->is_player_moving_bits[player->player_id];
+              if ( movement_state->move_player(player->player_id, target_direction, true) && is_player_idle) {
+                player->skin.play_animation(player->animations.first_animation + Bomberman::running_animation_offset, 1.65f, true);
+              }
             } else {
-              previous_action = Action::ArbitraryMove;
+              previous_action = Action::Move;
               return false;
             }
           }
           break;
         }
         case Action::PlaceBomb : {
-          //bomb_state->place_bomb(player->player_id);
+          bomb_state->place_bomb(player->player_id, true);
           previous_action = Action::PlaceBomb;
-          return false;
-        }
-        case Action::AvoidBlast : {
-          previous_action = Action::AvoidBlast;
           return false;
         }
       }
@@ -1133,16 +1226,15 @@ struct AISystem {
   std::bitset<player_count> has_behavior_assigned;
   Behavior behavior[player_count];
 
-  void reset(Board* const board_state, MovementSystem* const movement_state, BombSystem* const bomb_state, Bomberman* const player_2, Bomberman* const player_3, Bomberman* const player_4) {
+  void reset(MovementSystem* const movement_state, BombSystem* const bomb_state, Bomberman* const player_2, Bomberman* const player_3, Bomberman* const player_4) {
     behavior[1].player = player_2;
     behavior[2].player = player_3;
     behavior[3].player = player_4;
 
     for (uint32_t i=1; i < player_count; ++i) {
-      behavior[i].board_state     = board_state;
-      behavior[i].movement_state  = movement_state;
-      behavior[i].bomb_state      = bomb_state;
-      behavior[i].previous_action = Behavior::Action::AvoidBlast;
+      behavior[i].movement_state     = movement_state;
+      behavior[i].bomb_state         = bomb_state;
+      behavior[i].previous_action    = Behavior::Action::PlaceBomb;
       behavior[i].decide();
     }
   }
@@ -1202,7 +1294,7 @@ void SimulationState::init() {
   game_state->init(board, sound_system, player_1, player_2, player_3, player_4);
   movement_system->reset(game_state, board, player_1, player_2, player_3, player_4);
   bomb_system->reset(game_state, board, movement_system, sound_system);
-  ai_system->reset(board, movement_system, bomb_system, player_2, player_3, player_4);
+  ai_system->reset(movement_system, bomb_system, player_2, player_3, player_4);
 }
 
 void SimulationState::update() {
@@ -1226,10 +1318,9 @@ void SimulationState::update() {
 
   if (game_state->is_game_active && game_state->is_player_alive[0]) {
     ai_system->update();
+    if (player_moved) player_1->skin.play_animation(player_1->animations.first_animation + Bomberman::running_animation_offset, 1.65f, true);
+    movement_system->update();
   }
-
-  if (player_moved) player_1->skin.play_animation(player_1->animations.first_animation + Bomberman::running_animation_offset, 1.65f, true);
-  movement_system->update();
 
   if (input_state.action_button || input_state.gamepad_action_button) {
     if (game_state->is_game_active && game_state->is_player_alive[0]) {
@@ -1242,7 +1333,7 @@ void SimulationState::update() {
       } else {
         is_not_first_game = true;
       }
-      ai_system->reset(board, movement_system, bomb_system, player_2, player_3, player_4);
+      ai_system->reset(movement_system, bomb_system, player_2, player_3, player_4);
       game_state->restart_game();
       sound_system->play_start_bell();
       return;
