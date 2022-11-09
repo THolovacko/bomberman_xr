@@ -816,28 +816,24 @@ struct MovementSystem {
 
       switch (direction) {
         case Bomberman::GlobalDirection::Left : {
-          if (is_bomb_leftward || is_bomb_upward || is_bomb_downward) return false;
-          if (!(ai_valid_path_bits[player_id][0])) return false;
+          if (is_bomb_leftward || is_bomb_upward || is_bomb_downward || !ai_valid_path_bits[player_id][0]) return false;
           break;
         }
         case Bomberman::GlobalDirection::Right : {
-          if (is_bomb_rightward || is_bomb_upward || is_bomb_downward) return false;
-          if (!(ai_valid_path_bits[player_id][1])) return false;
+          if (is_bomb_rightward || is_bomb_upward || is_bomb_downward || !ai_valid_path_bits[player_id][1]) return false;
           break;
         }
         case Bomberman::GlobalDirection::Up : {
-          if (is_bomb_upward || is_bomb_rightward || is_bomb_leftward) return false;
-          if (!(ai_valid_path_bits[player_id][2])) return false;
+          if (is_bomb_upward || is_bomb_rightward || is_bomb_leftward || !ai_valid_path_bits[player_id][2]) return false;
           break;
         }
         case Bomberman::GlobalDirection::Down : {
-          if (is_bomb_downward || is_bomb_rightward || is_bomb_leftward) return false;
-          if (!(ai_valid_path_bits[player_id][3])) return false;
+          if (is_bomb_downward || is_bomb_rightward || is_bomb_leftward || !ai_valid_path_bits[player_id][3]) return false;
           break;
         }
-
-        ai_valid_path_bits[player_id].set();
       }
+
+      ai_valid_path_bits[player_id].set();
     }
 
     movement_state.target_tile_index         = target_tile_index;
@@ -975,11 +971,6 @@ struct BombSystem {
                                                      ( (board_state->tile_states[tile_index + (Board::floor_column_count * 2)] == Board::TileState::Empty) ) &&
                                                      ( (board_state->tile_states[tile_index + (Board::floor_column_count * 3)] == Board::TileState::Empty) );
 
-      movement_state->ai_valid_path_bits[player_id][0] = leftward_up_escape_path_exists || leftward_down_escape_path_exists || triple_left_escape_path_exists;
-      movement_state->ai_valid_path_bits[player_id][1] = rightward_up_escape_path_exists || rightward_down_escape_path_exists || triple_right_escape_path_exists;
-      movement_state->ai_valid_path_bits[player_id][2] = upward_left_path_exists || upward_right_path_exists || triple_up_path_exists;
-      movement_state->ai_valid_path_bits[player_id][3] = downward_left_path_exists || downward_right_path_exists || triple_down_path_exists;
-
       if ( !(leftward_up_escape_path_exists    ||
              leftward_down_escape_path_exists  ||
              rightward_up_escape_path_exists   ||
@@ -993,6 +984,11 @@ struct BombSystem {
              triple_up_path_exists             ||
              triple_down_path_exists
          ) ) return;
+
+      movement_state->ai_valid_path_bits[player_id][0] = leftward_up_escape_path_exists || leftward_down_escape_path_exists || triple_left_escape_path_exists;
+      movement_state->ai_valid_path_bits[player_id][1] = rightward_up_escape_path_exists || rightward_down_escape_path_exists || triple_right_escape_path_exists;
+      movement_state->ai_valid_path_bits[player_id][2] = upward_left_path_exists || upward_right_path_exists || triple_up_path_exists;
+      movement_state->ai_valid_path_bits[player_id][3] = downward_left_path_exists || downward_right_path_exists || triple_down_path_exists;
     }
 
     board_state->show_bomb(tile_index);
