@@ -705,7 +705,6 @@ struct MovementSystem {
   std::bitset<player_count * 2> is_player_moving_bits; // first half player is moving; second half player has chained move
   PlayerMovementState player_movement_states[player_count];
   Bomberman::GlobalDirection chain_move_directions[player_count];
-  std::bitset<4> ai_valid_path_bits[player_count];  // [left, right, up, down]
 
   void reset(GameState* const current_game_state, Board* const board_state, Bomberman* const player_1, Bomberman* const player_2, Bomberman* const player_3, Bomberman* const player_4) {
     this->current_game_state = current_game_state;
@@ -751,11 +750,6 @@ struct MovementSystem {
     player_2->current_direction = Bomberman::GlobalDirection::Down;
     player_3->current_direction = Bomberman::GlobalDirection::Up;
     player_4->current_direction = Bomberman::GlobalDirection::Up;
-
-    ai_valid_path_bits[0].set();
-    ai_valid_path_bits[1].set();
-    ai_valid_path_bits[2].set();
-    ai_valid_path_bits[3].set();
   }
 
   bool move_player(const uint32_t player_id, const Bomberman::GlobalDirection direction, const bool is_player_AI=false) {
@@ -816,24 +810,22 @@ struct MovementSystem {
 
       switch (direction) {
         case Bomberman::GlobalDirection::Left : {
-          if (is_bomb_leftward || is_bomb_upward || is_bomb_downward || !ai_valid_path_bits[player_id][0]) return false;
+          if (is_bomb_leftward || is_bomb_upward || is_bomb_downward) return false;
           break;
         }
         case Bomberman::GlobalDirection::Right : {
-          if (is_bomb_rightward || is_bomb_upward || is_bomb_downward || !ai_valid_path_bits[player_id][1]) return false;
+          if (is_bomb_rightward || is_bomb_upward || is_bomb_downward) return false;
           break;
         }
         case Bomberman::GlobalDirection::Up : {
-          if (is_bomb_upward || is_bomb_rightward || is_bomb_leftward || !ai_valid_path_bits[player_id][2]) return false;
+          if (is_bomb_upward || is_bomb_rightward || is_bomb_leftward) return false;
           break;
         }
         case Bomberman::GlobalDirection::Down : {
-          if (is_bomb_downward || is_bomb_rightward || is_bomb_leftward || !ai_valid_path_bits[player_id][3]) return false;
+          if (is_bomb_downward || is_bomb_rightward || is_bomb_leftward) return false;
           break;
         }
       }
-
-      ai_valid_path_bits[player_id].set();
     }
 
     movement_state.target_tile_index         = target_tile_index;
@@ -933,12 +925,12 @@ struct BombSystem {
     for (uint32_t i=0; i < (Board::floor_row_count * Board::floor_column_count); ++i) timers[i] = 0.0f;
   }
 
-  void place_bomb(const uint32_t player_id, const bool is_player_AI=false) {
+  void place_bomb(const uint32_t player_id, Bomberman::GlobalDirection* const ai_behavior_direction=nullptr) {
     const uint32_t tile_index = movement_state->player_movement_states[player_id].current_tile_index;
     if (!current_game_state->is_player_alive[player_id]) return;
     if (board_state->tile_states[tile_index] == Board::TileState::Bomb) return;
 
-    if (is_player_AI) {
+    if (ai_behavior_direction) {
       const size_t tile_row_index    = Board::calculate_row_index_from_tile_index(tile_index);
       const size_t tile_column_index = Board::calculate_column_index_from_tile_index(tile_index);
 
@@ -985,10 +977,10 @@ struct BombSystem {
              triple_down_path_exists
          ) ) return;
 
-      movement_state->ai_valid_path_bits[player_id][0] = leftward_up_escape_path_exists || leftward_down_escape_path_exists || triple_left_escape_path_exists;
-      movement_state->ai_valid_path_bits[player_id][1] = rightward_up_escape_path_exists || rightward_down_escape_path_exists || triple_right_escape_path_exists;
-      movement_state->ai_valid_path_bits[player_id][2] = upward_left_path_exists || upward_right_path_exists || triple_up_path_exists;
-      movement_state->ai_valid_path_bits[player_id][3] = downward_left_path_exists || downward_right_path_exists || triple_down_path_exists;
+       *ai_behavior_direction = (leftward_up_escape_path_exists || leftward_down_escape_path_exists || triple_left_escape_path_exists) ? Bomberman::GlobalDirection::Left : *ai_behavior_direction;
+       *ai_behavior_direction = (rightward_up_escape_path_exists || rightward_down_escape_path_exists || triple_right_escape_path_exists) ? Bomberman::GlobalDirection::Right : *ai_behavior_direction;
+       *ai_behavior_direction = (upward_left_path_exists || upward_right_path_exists || triple_up_path_exists) ? Bomberman::GlobalDirection::Up : *ai_behavior_direction;
+       *ai_behavior_direction = (downward_left_path_exists || downward_right_path_exists || triple_down_path_exists) ? Bomberman::GlobalDirection::Down : *ai_behavior_direction;
     }
 
     board_state->show_bomb(tile_index);
@@ -1153,6 +1145,7 @@ struct AISystem {
     Bomberman::GlobalDirection target_direction;
     float current_move_time;
     float target_move_time;
+    bool force_direction;
 
     void decide() {
       if (previous_action == Action::Move) {
@@ -1160,25 +1153,30 @@ struct AISystem {
       } else if (previous_action == Action::PlaceBomb) {
         current_action    = Action::Move;
         current_move_time = 0.0f;
-        target_move_time  = static_cast<float>(rand() % 150) / 100.0f;
+        target_move_time  = (static_cast<float>(rand() % 125) / 100.0f) + delta_time_seconds;
 
-        switch(rand() % 4) {
-          case 0 : {
-            target_direction = Bomberman::GlobalDirection::Up;
-            break;
+        if (!force_direction) {
+          switch(rand() % 4) {
+            case 0 : {
+              target_direction = Bomberman::GlobalDirection::Up;
+              break;
+            }
+            case 1 : {
+              target_direction = Bomberman::GlobalDirection::Down;
+              break;
+            }
+            case 2 : {
+              target_direction = Bomberman::GlobalDirection::Left;
+              break;
+            }
+            case 3 : {
+              target_direction = Bomberman::GlobalDirection::Right;
+              break;
+            }
           }
-          case 1 : {
-            target_direction = Bomberman::GlobalDirection::Down;
-            break;
-          }
-          case 2 : {
-            target_direction = Bomberman::GlobalDirection::Left;
-            break;
-          }
-          case 3 : {
-            target_direction = Bomberman::GlobalDirection::Right;
-            break;
-          }
+        } else {
+          // direction was set manually
+          force_direction = false;
         }
       }
     }
@@ -1189,27 +1187,32 @@ struct AISystem {
           if (current_move_time == 0.0f) {
             if (movement_state->move_player(player->player_id, target_direction, true)) {
               player->skin.play_animation(player->animations.first_animation + Bomberman::running_animation_offset, 1.65f, true);
-              current_move_time += 0.00001f;
+              current_move_time = 0.00001f;
             } else {  // invalid move so try again
               previous_action = Action::PlaceBomb;
               return false;
             }
           } else {
             current_move_time += delta_time_seconds;
+            const bool is_player_idle = !movement_state->is_player_moving_bits[player->player_id];
             if (current_move_time <= target_move_time) {
-              const bool is_player_idle = !movement_state->is_player_moving_bits[player->player_id];
-              if ( movement_state->move_player(player->player_id, target_direction, true) && is_player_idle) {
+              if ( movement_state->move_player(player->player_id, target_direction, true) && is_player_idle ) {
                 player->skin.play_animation(player->animations.first_animation + Bomberman::running_animation_offset, 1.65f, true);
               }
             } else {
-              previous_action = Action::Move;
-              return false;
+              if (is_player_idle) {
+                previous_action = Action::Move;
+                return false;
+              }
             }
           }
           break;
         }
         case Action::PlaceBomb : {
-          bomb_state->place_bomb(player->player_id, true);
+          if ( (rand() % 10 + 1) > 7 ) {
+            bomb_state->place_bomb(player->player_id, &this->target_direction);
+            this->force_direction = true;
+          }
           previous_action = Action::PlaceBomb;
           return false;
         }
@@ -1228,10 +1231,10 @@ struct AISystem {
     behavior[3].player = player_4;
 
     for (uint32_t i=1; i < player_count; ++i) {
-      behavior[i].movement_state     = movement_state;
-      behavior[i].bomb_state         = bomb_state;
-      behavior[i].previous_action    = Behavior::Action::PlaceBomb;
-      behavior[i].decide();
+      behavior[i].movement_state  = movement_state;
+      behavior[i].bomb_state      = bomb_state;
+      behavior[i].previous_action = Behavior::Action::PlaceBomb;
+      behavior[i].force_direction = false;
     }
   }
 
@@ -1312,7 +1315,7 @@ void SimulationState::update() {
     player_moved = movement_system->move_player(player_1->player_id, Bomberman::GlobalDirection::Down);
   }
 
-  if (game_state->is_game_active && game_state->is_player_alive[0]) {
+  if (game_state->is_game_active) {
     ai_system->update();
     if (player_moved) player_1->skin.play_animation(player_1->animations.first_animation + Bomberman::running_animation_offset, 1.65f, true);
     movement_system->update();
