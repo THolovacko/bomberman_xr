@@ -925,62 +925,98 @@ struct BombSystem {
     for (uint32_t i=0; i < (Board::floor_row_count * Board::floor_column_count); ++i) timers[i] = 0.0f;
   }
 
-  void place_bomb(const uint32_t player_id, Bomberman::GlobalDirection* const ai_behavior_direction=nullptr) {
+  void place_bomb(const uint32_t player_id, Bomberman::GlobalDirection* const ai_behavior_directions=nullptr) {
     const uint32_t tile_index = movement_state->player_movement_states[player_id].current_tile_index;
     if (!current_game_state->is_player_alive[player_id]) return;
     if (board_state->tile_states[tile_index] == Board::TileState::Bomb) return;
 
-    if (ai_behavior_direction) {
+    if (ai_behavior_directions) {
       const size_t tile_row_index    = Board::calculate_row_index_from_tile_index(tile_index);
       const size_t tile_column_index = Board::calculate_column_index_from_tile_index(tile_index);
 
-      const bool leftward_up_escape_path_exists    = ( (tile_column_index > 0) && (board_state->tile_states[tile_index - 1] == Board::TileState::Empty) ) &&
-                                                     ( (tile_row_index > 0) && (board_state->tile_states[tile_index - 1 - Board::floor_column_count] == Board::TileState::Empty) );
-      const bool leftward_down_escape_path_exists  = ( (tile_column_index > 0) && (board_state->tile_states[tile_index - 1] == Board::TileState::Empty) ) &&
-                                                     ( (tile_row_index < (Board::floor_row_count - 1)) && (board_state->tile_states[tile_index - 1 + Board::floor_column_count] == Board::TileState::Empty) );
-      const bool rightward_up_escape_path_exists   = ( (tile_column_index < (Board::floor_column_count - 1)) && (board_state->tile_states[tile_index + 1] == Board::TileState::Empty) ) &&
-                                                     ( (tile_row_index > 0) && (board_state->tile_states[(tile_index + 1) - Board::floor_column_count] == Board::TileState::Empty) );
-      const bool rightward_down_escape_path_exists = ( (tile_column_index < (Board::floor_column_count - 1)) && (board_state->tile_states[tile_index + 1] == Board::TileState::Empty) ) &&
-                                                     ( (tile_row_index < (Board::floor_row_count - 1)) && (board_state->tile_states[tile_index + 1 + Board::floor_column_count] == Board::TileState::Empty) );
-      const bool upward_left_path_exists           = ( (tile_row_index > 0) && (board_state->tile_states[tile_index - Board::floor_column_count] == Board::TileState::Empty) ) &&
-                                                     ( (tile_column_index > 0) && (board_state->tile_states[(tile_index - Board::floor_column_count - 1)] == Board::TileState::Empty) );
-      const bool upward_right_path_exists          = ( (tile_row_index > 0) && (board_state->tile_states[tile_index - Board::floor_column_count] == Board::TileState::Empty) ) &&
-                                                     ( (tile_column_index < (Board::floor_column_count - 1)) && (board_state->tile_states[tile_index - Board::floor_column_count + 1] == Board::TileState::Empty) );
-      const bool downward_left_path_exists         = ( (tile_row_index < (Board::floor_row_count - 1)) && (board_state->tile_states[tile_index + Board::floor_column_count] == Board::TileState::Empty) ) &&
-                                                     ( (tile_column_index > 0) && (board_state->tile_states[tile_index + Board::floor_column_count - 1] == Board::TileState::Empty) );
-      const bool downward_right_path_exists        = ( (tile_row_index < (Board::floor_row_count - 1)) && (board_state->tile_states[tile_index + Board::floor_column_count] == Board::TileState::Empty) ) &&
-                                                     ( (tile_column_index < (Board::floor_column_count - 1)) && (board_state->tile_states[tile_index + Board::floor_column_count + 1] == Board::TileState::Empty) );
-      const bool triple_left_escape_path_exists    = ( (tile_column_index > 2) && (board_state->tile_states[tile_index - 1] == Board::TileState::Empty) ) &&
-                                                     ( (board_state->tile_states[tile_index - 2] == Board::TileState::Empty) ) &&
-                                                     ( (board_state->tile_states[tile_index - 3] == Board::TileState::Empty) );
-      const bool triple_right_escape_path_exists   = ( (tile_column_index < (Board::floor_column_count - 3)) && (board_state->tile_states[tile_index + 1] == Board::TileState::Empty) ) &&
-                                                     ( (board_state->tile_states[tile_index + 2] == Board::TileState::Empty) ) &&
-                                                     ( (board_state->tile_states[tile_index + 3] == Board::TileState::Empty) );
-      const bool triple_up_path_exists             = ( (tile_row_index > 2) && (board_state->tile_states[tile_index - Board::floor_column_count] == Board::TileState::Empty) ) &&
-                                                     ( (board_state->tile_states[tile_index - (Board::floor_column_count * 2)] == Board::TileState::Empty) ) &&
-                                                     ( (board_state->tile_states[tile_index - (Board::floor_column_count * 3)] == Board::TileState::Empty) );
-      const bool triple_down_path_exists           = ( (tile_row_index < (Board::floor_row_count - 3)) && (board_state->tile_states[tile_index + Board::floor_column_count] == Board::TileState::Empty) ) &&
-                                                     ( (board_state->tile_states[tile_index + (Board::floor_column_count * 2)] == Board::TileState::Empty) ) &&
-                                                     ( (board_state->tile_states[tile_index + (Board::floor_column_count * 3)] == Board::TileState::Empty) );
-
-      if ( !(leftward_up_escape_path_exists    ||
-             leftward_down_escape_path_exists  ||
-             rightward_up_escape_path_exists   ||
-             rightward_down_escape_path_exists ||
-             upward_left_path_exists           ||
-             upward_right_path_exists          ||
-             downward_left_path_exists         ||
-             downward_right_path_exists        ||
-             triple_left_escape_path_exists    ||
-             triple_right_escape_path_exists   ||
-             triple_up_path_exists             ||
-             triple_down_path_exists
+      const bool leftward_up_escape_path_exists      = ( (tile_column_index > 0) && (board_state->tile_states[tile_index - 1] == Board::TileState::Empty) ) &&
+                                                       ( (tile_row_index > 0) && (board_state->tile_states[tile_index - 1 - Board::floor_column_count] == Board::TileState::Empty) );
+      const bool leftward_down_escape_path_exists    = ( (tile_column_index > 0) && (board_state->tile_states[tile_index - 1] == Board::TileState::Empty) ) &&
+                                                       ( (tile_row_index < (Board::floor_row_count - 1)) && (board_state->tile_states[tile_index - 1 + Board::floor_column_count] == Board::TileState::Empty) );
+      const bool rightward_up_escape_path_exists     = ( (tile_column_index < (Board::floor_column_count - 1)) && (board_state->tile_states[tile_index + 1] == Board::TileState::Empty) ) &&
+                                                       ( (tile_row_index > 0) && (board_state->tile_states[(tile_index + 1) - Board::floor_column_count] == Board::TileState::Empty) );
+      const bool rightward_down_escape_path_exists   = ( (tile_column_index < (Board::floor_column_count - 1)) && (board_state->tile_states[tile_index + 1] == Board::TileState::Empty) ) &&
+                                                       ( (tile_row_index < (Board::floor_row_count - 1)) && (board_state->tile_states[tile_index + 1 + Board::floor_column_count] == Board::TileState::Empty) );
+      const bool upward_left_path_exists             = ( (tile_row_index > 0) && (board_state->tile_states[tile_index - Board::floor_column_count] == Board::TileState::Empty) ) &&
+                                                       ( (tile_column_index > 0) && (board_state->tile_states[(tile_index - Board::floor_column_count - 1)] == Board::TileState::Empty) );
+      const bool upward_right_path_exists            = ( (tile_row_index > 0) && (board_state->tile_states[tile_index - Board::floor_column_count] == Board::TileState::Empty) ) &&
+                                                       ( (tile_column_index < (Board::floor_column_count - 1)) && (board_state->tile_states[tile_index - Board::floor_column_count + 1] == Board::TileState::Empty) );
+      const bool downward_left_path_exists           = ( (tile_row_index < (Board::floor_row_count - 1)) && (board_state->tile_states[tile_index + Board::floor_column_count] == Board::TileState::Empty) ) &&
+                                                       ( (tile_column_index > 0) && (board_state->tile_states[tile_index + Board::floor_column_count - 1] == Board::TileState::Empty) );
+      const bool downward_right_path_exists          = ( (tile_row_index < (Board::floor_row_count - 1)) && (board_state->tile_states[tile_index + Board::floor_column_count] == Board::TileState::Empty) ) &&
+                                                       ( (tile_column_index < (Board::floor_column_count - 1)) && (board_state->tile_states[tile_index + Board::floor_column_count + 1] == Board::TileState::Empty) );
+      const bool triple_left_escape_path_exists      = ( (tile_column_index > 2) && (board_state->tile_states[tile_index - 1] == Board::TileState::Empty) ) &&
+                                                       ( (board_state->tile_states[tile_index - 2] == Board::TileState::Empty) ) &&
+                                                       ( (board_state->tile_states[tile_index - 3] == Board::TileState::Empty) );
+      const bool triple_right_escape_path_exists     = ( (tile_column_index < (Board::floor_column_count - 3)) && (board_state->tile_states[tile_index + 1] == Board::TileState::Empty) ) &&
+                                                       ( (board_state->tile_states[tile_index + 2] == Board::TileState::Empty) ) &&
+                                                       ( (board_state->tile_states[tile_index + 3] == Board::TileState::Empty) );
+      const bool triple_up_path_exists               = ( (tile_row_index > 2) && (board_state->tile_states[tile_index - Board::floor_column_count] == Board::TileState::Empty) ) &&
+                                                       ( (board_state->tile_states[tile_index - (Board::floor_column_count * 2)] == Board::TileState::Empty) ) &&
+                                                       ( (board_state->tile_states[tile_index - (Board::floor_column_count * 3)] == Board::TileState::Empty) );
+      const bool triple_down_path_exists             = ( (tile_row_index < (Board::floor_row_count - 3)) && (board_state->tile_states[tile_index + Board::floor_column_count] == Board::TileState::Empty) ) &&
+                                                       ( (board_state->tile_states[tile_index + (Board::floor_column_count * 2)] == Board::TileState::Empty) ) &&
+                                                       ( (board_state->tile_states[tile_index + (Board::floor_column_count * 3)] == Board::TileState::Empty) );
+      const bool leftward_2_up_escape_path_exists    = ( (tile_column_index > 1) && (board_state->tile_states[tile_index - 1] == Board::TileState::Empty) ) &&
+                                                       ( board_state->tile_states[tile_index - 2] == Board::TileState::Empty ) &&
+                                                       ( (tile_row_index > 0) && (board_state->tile_states[tile_index - 2 - Board::floor_column_count] == Board::TileState::Empty) );
+      const bool leftward_2_down_escape_path_exists  = ( (tile_column_index > 1) && (board_state->tile_states[tile_index - 1] == Board::TileState::Empty) ) &&
+                                                       ( board_state->tile_states[tile_index - 2] == Board::TileState::Empty ) &&
+                                                       ( (tile_row_index < (Board::floor_row_count - 1)) && (board_state->tile_states[tile_index - 2 + Board::floor_column_count] == Board::TileState::Empty) );
+      const bool rightward_2_up_escape_path_exists   = ( (tile_column_index < (Board::floor_column_count - 2)) && (board_state->tile_states[tile_index + 1] == Board::TileState::Empty) ) &&
+                                                       ( board_state->tile_states[tile_index + 2] == Board::TileState::Empty ) &&
+                                                       ( (tile_row_index > 0) && (board_state->tile_states[(tile_index + 2) - Board::floor_column_count] == Board::TileState::Empty) );
+      const bool rightward_2_down_escape_path_exists = ( (tile_column_index < (Board::floor_column_count - 2)) && (board_state->tile_states[tile_index + 1] == Board::TileState::Empty) ) &&
+                                                       ( board_state->tile_states[tile_index + 2] == Board::TileState::Empty ) &&
+                                                       ( (tile_row_index < (Board::floor_row_count - 1)) && (board_state->tile_states[tile_index + 2 + Board::floor_column_count] == Board::TileState::Empty) );
+      const bool upward_2_left_path_exists           = ( (tile_row_index > 1) && (board_state->tile_states[tile_index - Board::floor_column_count] == Board::TileState::Empty) ) &&
+                                                       ( board_state->tile_states[tile_index - (Board::floor_column_count * 2)] == Board::TileState::Empty ) &&
+                                                       ( (tile_column_index > 0) && (board_state->tile_states[(tile_index - (Board::floor_column_count * 2) - 1)] == Board::TileState::Empty) );
+      const bool upward_2_right_path_exists          = ( (tile_row_index > 1) && (board_state->tile_states[tile_index - Board::floor_column_count] == Board::TileState::Empty) ) &&
+                                                       ( board_state->tile_states[tile_index - (Board::floor_column_count * 2)] == Board::TileState::Empty ) &&
+                                                       ( (tile_column_index < (Board::floor_column_count - 1)) && (board_state->tile_states[tile_index - (Board::floor_column_count * 2) + 1] == Board::TileState::Empty) );
+      const bool downward_2_left_path_exists         = ( (tile_row_index < (Board::floor_row_count - 2)) && (board_state->tile_states[tile_index + Board::floor_column_count] == Board::TileState::Empty) ) &&
+                                                       ( board_state->tile_states[tile_index + (Board::floor_column_count * 2)] == Board::TileState::Empty ) &&
+                                                       ( (tile_column_index > 0) && (board_state->tile_states[tile_index + (Board::floor_column_count * 2) - 1] == Board::TileState::Empty) );
+      const bool downward_2_right_path_exists        = ( (tile_row_index < (Board::floor_row_count - 2)) && (board_state->tile_states[tile_index + Board::floor_column_count] == Board::TileState::Empty) ) &&
+                                                       ( board_state->tile_states[tile_index + (Board::floor_column_count * 2)] == Board::TileState::Empty ) &&
+                                                       ( (tile_column_index < (Board::floor_column_count - 1)) && (board_state->tile_states[tile_index + (Board::floor_column_count * 2) + 1] == Board::TileState::Empty) );
+      if ( !(leftward_up_escape_path_exists      ||
+             leftward_down_escape_path_exists    ||
+             rightward_up_escape_path_exists     ||
+             rightward_down_escape_path_exists   ||
+             upward_left_path_exists             ||
+             upward_right_path_exists            ||
+             downward_left_path_exists           ||
+             downward_right_path_exists          ||
+             triple_left_escape_path_exists      ||
+             triple_right_escape_path_exists     ||
+             triple_up_path_exists               ||
+             triple_down_path_exists             ||
+             leftward_2_up_escape_path_exists    ||
+             leftward_2_down_escape_path_exists  ||
+             rightward_2_up_escape_path_exists   ||
+             rightward_2_down_escape_path_exists ||
+             upward_2_left_path_exists           ||
+             upward_2_right_path_exists          ||
+             downward_2_left_path_exists         ||
+             downward_2_right_path_exists
          ) ) return;
 
-       *ai_behavior_direction = (leftward_up_escape_path_exists || leftward_down_escape_path_exists || triple_left_escape_path_exists) ? Bomberman::GlobalDirection::Left : *ai_behavior_direction;
-       *ai_behavior_direction = (rightward_up_escape_path_exists || rightward_down_escape_path_exists || triple_right_escape_path_exists) ? Bomberman::GlobalDirection::Right : *ai_behavior_direction;
-       *ai_behavior_direction = (upward_left_path_exists || upward_right_path_exists || triple_up_path_exists) ? Bomberman::GlobalDirection::Up : *ai_behavior_direction;
-       *ai_behavior_direction = (downward_left_path_exists || downward_right_path_exists || triple_down_path_exists) ? Bomberman::GlobalDirection::Down : *ai_behavior_direction;
+       ai_behavior_directions[0] = (leftward_up_escape_path_exists || leftward_2_up_escape_path_exists || leftward_down_escape_path_exists || leftward_2_down_escape_path_exists || triple_left_escape_path_exists) ? Bomberman::GlobalDirection::Left : ai_behavior_directions[0];
+       ai_behavior_directions[0] = (rightward_up_escape_path_exists || rightward_2_up_escape_path_exists || rightward_down_escape_path_exists || rightward_2_down_escape_path_exists || triple_right_escape_path_exists) ? Bomberman::GlobalDirection::Right : ai_behavior_directions[0];
+       ai_behavior_directions[0] = (upward_left_path_exists || upward_2_left_path_exists || upward_right_path_exists || upward_2_right_path_exists || triple_up_path_exists) ? Bomberman::GlobalDirection::Up : ai_behavior_directions[0];
+       ai_behavior_directions[0] = (downward_left_path_exists || downward_2_left_path_exists || downward_right_path_exists || downward_2_right_path_exists || triple_down_path_exists) ? Bomberman::GlobalDirection::Down : ai_behavior_directions[0];
+
+       ai_behavior_directions[1] = (upward_left_path_exists || downward_left_path_exists || leftward_2_up_escape_path_exists || leftward_2_down_escape_path_exists || triple_left_escape_path_exists) ? Bomberman::GlobalDirection::Left : ai_behavior_directions[1];
+       ai_behavior_directions[1] = (upward_right_path_exists || downward_right_path_exists || rightward_2_up_escape_path_exists || rightward_2_down_escape_path_exists || triple_right_escape_path_exists) ? Bomberman::GlobalDirection::Right : ai_behavior_directions[1];
+       ai_behavior_directions[1] = (leftward_up_escape_path_exists || rightward_up_escape_path_exists || upward_2_left_path_exists || upward_2_right_path_exists || triple_up_path_exists) ? Bomberman::GlobalDirection::Up : ai_behavior_directions[1];
+       ai_behavior_directions[1] = (leftward_down_escape_path_exists || rightward_down_escape_path_exists || downward_2_left_path_exists || downward_2_right_path_exists || triple_down_path_exists) ? Bomberman::GlobalDirection::Down : ai_behavior_directions[1];
     }
 
     board_state->show_bomb(tile_index);
@@ -1142,9 +1178,11 @@ struct AISystem {
     Bomberman* player;
     Action current_action;
     Action previous_action;
+    Bomberman::GlobalDirection target_directions[2];
     Bomberman::GlobalDirection target_direction;
     float current_move_time;
     float target_move_time;
+    uint32_t current_target_direction_index;
     bool force_direction;
 
     void decide() {
@@ -1153,9 +1191,10 @@ struct AISystem {
       } else if (previous_action == Action::PlaceBomb) {
         current_action    = Action::Move;
         current_move_time = 0.0f;
-        target_move_time  = (static_cast<float>(rand() % 125) / 100.0f) + delta_time_seconds;
 
         if (!force_direction) {
+          target_move_time = (static_cast<float>(rand() % 125) / 100.0f) + delta_time_seconds;
+
           switch(rand() % 4) {
             case 0 : {
               target_direction = Bomberman::GlobalDirection::Up;
@@ -1175,8 +1214,18 @@ struct AISystem {
             }
           }
         } else {
-          // direction was set manually
-          force_direction = false;
+          assert(current_target_direction_index < 2);
+
+          target_move_time = (static_cast<float>(rand() % 20) / 100.0f) + delta_time_seconds;
+
+          if (current_target_direction_index == 1) {
+            force_direction  = false;
+            target_direction = target_directions[1];
+            current_target_direction_index = 0;
+          } else {
+            target_direction = target_directions[0];
+            ++current_target_direction_index;
+          }
         }
       }
     }
@@ -1209,9 +1258,9 @@ struct AISystem {
           break;
         }
         case Action::PlaceBomb : {
-          if ( (rand() % 10 + 1) > 7 ) {
-            bomb_state->place_bomb(player->player_id, &this->target_direction);
-            this->force_direction = true;
+          if ( !force_direction && ((rand() % 10 + 1) > 8) ) {
+            bomb_state->place_bomb(player->player_id, this->target_directions);
+            force_direction = true;
           }
           previous_action = Action::PlaceBomb;
           return false;
@@ -1235,6 +1284,7 @@ struct AISystem {
       behavior[i].bomb_state      = bomb_state;
       behavior[i].previous_action = Behavior::Action::PlaceBomb;
       behavior[i].force_direction = false;
+      behavior[i].current_target_direction_index = 0;
     }
   }
 
@@ -1319,6 +1369,8 @@ void SimulationState::update() {
     ai_system->update();
     if (player_moved) player_1->skin.play_animation(player_1->animations.first_animation + Bomberman::running_animation_offset, 1.65f, true);
     movement_system->update();
+  } else {
+    movement_system->is_player_moving_bits.reset();
   }
 
   if (input_state.action_button || input_state.gamepad_action_button) {
