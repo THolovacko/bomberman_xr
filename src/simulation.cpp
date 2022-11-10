@@ -199,7 +199,7 @@ struct Board {
       if ( is_tile_stone || is_tile_in_player_spawn_space ) continue;
 
       const int random_number = (rand() % 10 + 1);
-      if (random_number <= 7) {
+      if (random_number <= 6) {
         tile_states[tile_index] = TileState::Brick;
         show_brick(tile_index);
       }
@@ -1182,6 +1182,7 @@ struct AISystem {
     Bomberman::GlobalDirection target_direction;
     float current_move_time;
     float target_move_time;
+    float current_bomb_time;
     uint32_t current_target_direction_index;
     bool force_direction;
 
@@ -1239,6 +1240,7 @@ struct AISystem {
               current_move_time = 0.00001f;
             } else {  // invalid move so try again
               previous_action = Action::PlaceBomb;
+              current_bomb_time += delta_time_seconds;
               return false;
             }
           } else {
@@ -1251,6 +1253,7 @@ struct AISystem {
             } else {
               if (is_player_idle) {
                 previous_action = Action::Move;
+                current_bomb_time += delta_time_seconds;
                 return false;
               }
             }
@@ -1258,15 +1261,18 @@ struct AISystem {
           break;
         }
         case Action::PlaceBomb : {
-          if ( !force_direction && ((rand() % 10 + 1) > 8) ) {
+          if ( !force_direction && (current_bomb_time >= 3.0f) ) {
             bomb_state->place_bomb(player->player_id, this->target_directions);
-            force_direction = true;
+            force_direction   = true;
+            current_bomb_time = 0.0f;
           }
+          current_bomb_time += delta_time_seconds;
           previous_action = Action::PlaceBomb;
           return false;
         }
       }
 
+      current_bomb_time += delta_time_seconds;
       return true;
     }
   };
@@ -1280,10 +1286,11 @@ struct AISystem {
     behavior[3].player = player_4;
 
     for (uint32_t i=1; i < player_count; ++i) {
-      behavior[i].movement_state  = movement_state;
-      behavior[i].bomb_state      = bomb_state;
-      behavior[i].previous_action = Behavior::Action::PlaceBomb;
-      behavior[i].force_direction = false;
+      behavior[i].movement_state                 = movement_state;
+      behavior[i].bomb_state                     = bomb_state;
+      behavior[i].previous_action                = Behavior::Action::PlaceBomb;
+      behavior[i].force_direction                = false;
+      behavior[i].current_bomb_time              = 0.0f;
       behavior[i].current_target_direction_index = 0;
     }
   }
