@@ -90,5 +90,4 @@
 * You have to select *File > Sync Project with Gradle Files* if you change a build.gradle file (and possibly the CMakeLists.txt and AndroidManifest.xml files as well)
 * I didn't need to run the following commands but if Vulkan validation layers are not working you can try running ```adb shell setprop debug.vvl.forcelayerlog 1``` and then ```adb logcat -s VALIDATION```
 * Android Studio automatically signs your app with a debug certificate for debug builds. The debug certificate has an expiration date of 30 years from its creation date and you will have delete the debug.keystore file most likely stored at C:\Users\user\\.android\
-* There are audio artifacts that I'm not sure where they are coming from, maybe issue with miniaudio?
 * I get some unsettling logs while running the debug build. I am unsure if they are my fault and I have been ignoring them. You can view them [here](https://gist.github.com/THolovacko/9eeb46806942bf5a7fca5473e7215b60)
