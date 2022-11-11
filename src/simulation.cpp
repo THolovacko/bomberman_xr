@@ -632,8 +632,8 @@ struct SoundSystem {
   void play_bomb_explosion(const uint32_t tile_index) {
     static uint32_t sound_source_id = 0;
 
-    const int32_t column_index = Board::calculate_column_index_from_tile_index(tile_index);
-    const int32_t row_index    = Board::calculate_row_index_from_tile_index(tile_index);
+    const size_t column_index = Board::calculate_column_index_from_tile_index(tile_index);
+    const size_t row_index    = Board::calculate_row_index_from_tile_index(tile_index);
     const Vector3f position { board_state->first_floor_position.x + (Board::block_offset * (float)column_index), board_state->first_floor_position.y, board_state->first_floor_position.z + (Board::block_offset * (float)row_index) };
 
     update_audio_source(explosion_sound_ids[sound_source_id], position);
@@ -1044,8 +1044,8 @@ struct BombSystem {
 
           static_assert( (Board::floor_row_count == 11) && (Board::floor_column_count == 13) ); // if fails then update this method
 
-          const int32_t column_index = Board::calculate_column_index_from_tile_index(tile_index);
-          const int32_t row_index    = Board::calculate_row_index_from_tile_index(tile_index);
+          const size_t column_index = Board::calculate_column_index_from_tile_index(tile_index);
+          const size_t row_index    = Board::calculate_row_index_from_tile_index(tile_index);
 
           uint32_t blast_up_count = 0;
           for (int32_t i=1; i <= int32_t(blast_radius_tiles); ++i) {
@@ -1381,6 +1381,7 @@ void SimulationState::update() {
   }
 
   if (input_state.action_button || input_state.gamepad_action_button) {
+    //play_audio_source(0, true);
     if (game_state->is_game_active && game_state->is_player_alive[0]) {
       bomb_system->place_bomb(player_1->player_id);
     } else {

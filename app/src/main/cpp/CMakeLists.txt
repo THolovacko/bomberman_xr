@@ -54,7 +54,7 @@ add_library(bomberman_xr SHARED
 
 target_include_directories(bomberman_xr PRIVATE
   ${solution_dir}dependencies/ovr_audio_spatializer_native_32.0.0/AudioSDK/Include/
-  ${solution_dir}dependencies/miniaudio-master-04-20-2022/miniaudio-master/
+  ${solution_dir}dependencies/miniaudio-master-11-05-2022/miniaudio-master/
   ${solution_dir}dependencies/openxr_linear-05-27-2022/
   ${solution_dir}dependencies/cgltf-1.12/
   ${solution_dir}dependencies/stb-master-09-10-2021/

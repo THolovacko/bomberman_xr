@@ -39,6 +39,10 @@ void audio_data_callback(ma_device* device, void* output, const void* input, ma_
 {
   // The contents of the output buffer passed into the data callback will always be pre-initialized to silence
   // miniaudio will automatically clip samples by default (assuming ma_format_f32 playback sample format)
+
+  assert(device->playback.channels == CHANNEL_COUNT);
+  assert(device->playback.format == ma_format_f32);
+
   static float* original_samples    = ovrAudio_AllocSamples(SAMPLE_COUNT);  // these are monophonic
   static float* spatialized_samples = ovrAudio_AllocSamples(SAMPLE_COUNT * CHANNEL_COUNT);
   static uint32_t statuses[AudioSources::max_count];
@@ -71,7 +75,8 @@ void audio_data_callback(ma_device* device, void* output, const void* input, ma_
         if (all_audio_sources.is_audio_source_playing[audio_source_index]) {
           ma_decoder_read_pcm_frames(&all_audio_sources.decoders[audio_source_index], original_samples, frames_to_read_this_iteration, &frames_read);
         } else {  // handle reverberation tail by play silence until status is ovrAudioSpatializationStatus_Finished
-          frames_read = frame_count;
+          for (size_t i=0; i < SAMPLE_COUNT; ++i) original_samples[i] = 0.0f;
+          frames_read = frames_to_read_this_iteration;
         }
 
         ovr_result = ovrAudio_SpatializeMonoSourceInterleaved(ovr_audio_context, audio_source_index, &(statuses[audio_source_index]), spatialized_samples, original_samples);
@@ -87,12 +92,15 @@ void audio_data_callback(ma_device* device, void* output, const void* input, ma_
           if (all_audio_sources.is_audio_source_looping[audio_source_index]) {
             ma_decoder_seek_to_pcm_frame(&all_audio_sources.decoders[audio_source_index], 0);
           } else {
-            break;
+            all_audio_sources.is_audio_source_playing[audio_source_index] = false;
           }
         }
       }
     }
   }
+
+  uint32_t status;
+  ovr_result = ovrAudio_MixInSharedReverbInterleaved(ovr_audio_context, &status, mix_buffer);
 }
 
 bool init_audio() {
@@ -159,18 +167,20 @@ bool init_audio() {
   {
     ovrAudioBoxRoomParameters box_room_params = {};
     box_room_params.brp_Size          = sizeof(box_room_params);
-    box_room_params.brp_ReflectLeft   = 0.5f; // 0.0 is fully absorbed and 1.0 is fully reflected (max is 0.97 though)
-    box_room_params.brp_ReflectRight  = 0.5f;
-    box_room_params.brp_ReflectUp     = 0.5f;
-    box_room_params.brp_ReflectDown   = 0.5f;
-    box_room_params.brp_ReflectFront  = 0.5f;
-    box_room_params.brp_ReflectBehind = 0.5f;
-    box_room_params.brp_Width         = 8;  // meters
-    box_room_params.brp_Height        = 8;
-    box_room_params.brp_Depth         = 8;
+    box_room_params.brp_ReflectLeft   = 0.1f; // 0.0 is fully absorbed and 1.0 is fully reflected (max is 0.97 though)
+    box_room_params.brp_ReflectRight  = 0.1f;
+    box_room_params.brp_ReflectUp     = 0.1f;
+    box_room_params.brp_ReflectDown   = 0.1f;
+    box_room_params.brp_ReflectFront  = 0.1f;
+    box_room_params.brp_ReflectBehind = 0.1f;
+    box_room_params.brp_Width         = 8.0f;  // meters
+    box_room_params.brp_Height        = 8.0f;
+    box_room_params.brp_Depth         = 8.0f;
 
     if ( ovrAudio_SetSimpleBoxRoomParameters(ovr_audio_context, &box_room_params) != ovrSuccess ) return false;
   }
+
+  ovrAudio_SetSharedReverbWetLevel(ovr_audio_context, 1.0f);
 
   return true;
 }
