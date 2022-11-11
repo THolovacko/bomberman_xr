@@ -5,7 +5,7 @@
 #include "platform.h"
 
 #define SAMPLE_RATE_HZ 48000
-#define SAMPLE_COUNT   512
+#define SAMPLE_COUNT   480
 #define CHANNEL_COUNT  2
 
 struct AudioSources {
