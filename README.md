@@ -1,4 +1,4 @@
-[![Bomberman XR](help/youtube_screenshot.png?raw=true "Bomberman XR")](https://www.youtube.com/watch?v=S94yLNE0eWw "Bomberman XR")
+[![Bomberman XR](help/yt_screenshot.png?raw=true "Bomberman XR")](https://www.youtube.com/watch?v=S94yLNE0eWw "Bomberman XR")
 
 ## Tech Stack
 * Windows 11 Pro, 64-bit operating system, x64-based processor
