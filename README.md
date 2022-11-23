@@ -1,4 +1,4 @@
-<iframe width="560" height="315" src="https://www.youtube.com/embed/S94yLNE0eWw" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+[![IMAGE ALT TEXT](http://img.youtube.com/vi/S94yLNE0eWw/0.jpg)](http://www.youtube.com/watch?v=S94yLNE0eWw "Bomberman XR")
 
 ## Tech Stack
 * Windows 11 Pro, 64-bit operating system, x64-based processor
