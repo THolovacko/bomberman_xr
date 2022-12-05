@@ -41,6 +41,7 @@ android {
   defaultConfig { // some of these are also set in AndroidManifest.xml
     applicationId "com.tom.bomberman_xr"
     minSdkVersion 29
+    //noinspection ExpiredTargetSdkVersion
     targetSdkVersion 29
     // compileSdk 29
     versionCode 1
@@ -56,7 +57,7 @@ android {
         arguments '-DBUILD_STANDARD_OPENXR_LOADER=ON'
 
         cppFlags '-fno-exceptions -fno-rtti -fstrict-aliasing -Wstrict-aliasing'
-        cppFlags '-DAPPLICATION_NAME=\\\\\\\"' + application_name + '\\\\\\\"'
+//        cppFlags '-DAPPLICATION_NAME=\\\\\\\"' + application_name + '\\\\\\\"'
       }
     }
   }
@@ -79,7 +80,7 @@ android {
   }
   externalNativeBuild {
     cmake {
-      path file('src/main/cpp/CMakeLists.txt')
+      path file('../CMakeLists.txt')
       version '3.22.1'
     }
   }
