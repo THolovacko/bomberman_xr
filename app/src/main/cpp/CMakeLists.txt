@@ -1,15 +1,26 @@
 cmake_minimum_required(VERSION 3.22.1)
 
+set(ANDROID_STL c++_static)
 project("bomberman_xr")
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+option(BUILD_STANDARD_OPENXR_LOADER "Use the standard OpenXR loader instead of the Oculus one." OFF)
 set(solution_dir "../../../../")
 
-file(GLOB vulkan_shaders 
+file(GLOB vulkan_shaders
   ${solution_dir}shaders/glsl/*.vert
   ${solution_dir}shaders/glsl/*.frag
 )
 
+if(ANDROID)
+  file(GLOB GLSLC_DIRS ${CMAKE_ANDROID_NDK}/shader-tools/*)
+else()
+  file(GLOB GLSLC_DIRS $ENV{VULKAN_SDK}/*)
+endif()
+find_program(glslc_program glslc PATHS ${GLSLC_DIRS})
 function(compile_shader target shader_absolute_file_path)
-  find_program(glslc_program glslc)
   get_filename_component(shader_name ${shader_absolute_file_path} NAME)
   set(relative_shader_path ../../../../../shaders/glsl/${shader_name})
 
@@ -53,53 +64,40 @@ add_library(bomberman_xr SHARED
 )
 
 target_include_directories(bomberman_xr PRIVATE
-  ${solution_dir}dependencies/ovr_audio_spatializer_native_32.0.0/AudioSDK/Include/
   ${solution_dir}dependencies/miniaudio-master-11-05-2022/miniaudio-master/
   ${solution_dir}dependencies/openxr_linear-05-27-2022/
   ${solution_dir}dependencies/cgltf-1.12/
   ${solution_dir}dependencies/stb-master-09-10-2021/
-  ${solution_dir}dependencies/ovr_openxr_mobile_sdk_42.0/3rdParty/khronos/openxr/OpenXR-SDK/include/
   ${solution_dir}dependencies/glm-0.9.9.8/
   $ENV{VK_SDK_PATH}/Include/
   ${solution_dir}src/
   ${solution_dir}shaders/glsl/bin/
   ${ANDROID_NDK}/sources/android/native_app_glue
 )
-
+target_compile_definitions(bomberman_xr PRIVATE MA_ENABLE_ONLY_SPECIFIC_BACKENDS MA_ENABLE_OPENSL GLM_FORCE_CXX2A)
 foreach(file ${vulkan_shaders})
   message(${file})
   compile_shader(bomberman_xr ${file})
 endforeach()
 
-add_library(ovr_audio_static_64_lib STATIC IMPORTED)
-set_target_properties(ovr_audio_static_64_lib PROPERTIES IMPORTED_LOCATION
-  ${CMAKE_CURRENT_SOURCE_DIR}${solution_dir}../dependencies/ovr_audio_spatializer_native_32.0.0/AudioSDK/Lib/Android/arm64-v8a/libovraudiostatic64.a
-)
-
-add_library(ovr_audio_64_lib SHARED IMPORTED)
-set_target_properties(ovr_audio_64_lib PROPERTIES IMPORTED_LOCATION
-  ${CMAKE_CURRENT_SOURCE_DIR}${solution_dir}../dependencies/ovr_audio_spatializer_native_32.0.0/AudioSDK/Lib/Android/arm64-v8a/libovraudio64.so
-)
 
 find_library(log-lib log)
 
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-  add_library(openxr_loader_lib SHARED IMPORTED)
-  set_target_properties(openxr_loader_lib PROPERTIES IMPORTED_LOCATION
-    ${CMAKE_CURRENT_SOURCE_DIR}${solution_dir}../dependencies/ovr_openxr_mobile_sdk_42.0/OpenXR/Libs/Android/arm64-v8a/Debug/libopenxr_loader.so
-  )
+if(BUILD_STANDARD_OPENXR_LOADER)
+  find_package(OpenXR REQUIRED)
+  target_compile_definitions(bomberman_xr PRIVATE BUILD_STANDARD_OPENXR_LOADER)
 else()
-  add_library(openxr_loader_lib SHARED IMPORTED)
-  set_target_properties(openxr_loader_lib PROPERTIES IMPORTED_LOCATION
-    ${CMAKE_CURRENT_SOURCE_DIR}${solution_dir}../dependencies/ovr_openxr_mobile_sdk_42.0/OpenXR/Libs/Android/arm64-v8a/Release/libopenxr_loader.so
-  )
+  target_compile_definitions(bomberman_xr PRIVATE OCULUS_QUEST_2)
+  include(OculusOpenXR.cmake)
+  include(OculusAudio.cmake)
+  target_link_libraries(bomberman_xr
+    ovr_audio_static_64_lib
+    ovr_audio_64_lib)
 endif()
+  target_link_libraries(bomberman_xr OpenXR::openxr_loader)
 
 target_link_libraries(bomberman_xr
   android
   ${log-lib}
-  ovr_audio_static_64_lib
-  ovr_audio_64_lib
-  openxr_loader_lib
   libvulkan.so
 )

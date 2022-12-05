@@ -4,28 +4,31 @@ plugins {
 
 String application_name = "BombermanXR"
 
-def keystore_properties_file = rootProject.file("keystore.properties")
-def keystore_properties      = new Properties()
+// def keystore_properties_file = rootProject.file("keystore.properties")
+// def keystore_properties      = new Properties()
 
-try {
-  keystore_properties.load(new FileInputStream(keystore_properties_file))
-} catch(FileNotFoundException exception) {
-  keystore_properties_file.createNewFile()
-  keystore_properties_file.write("storePassword=myStorePassword\nkeyPassword=mykeyPassword\nkeyAlias=myKeyAlias\nstoreFile=C:\\\\Decided\\\\StoreFile\\\\Location.jks")
-  keystore_properties.load(new FileInputStream(keystore_properties_file))
-}
+// try {
+//   keystore_properties.load(new FileInputStream(keystore_properties_file))
+// } catch(FileNotFoundException exception) {
+//   // keystore_properties_file.createNewFile()
+//   // keystore_properties_file.write("storePassword=myStorePassword\nkeyPassword=mykeyPassword\nkeyAlias=myKeyAlias\nstoreFile=./Location.jks")
+//   // keystore_properties.load(new FileInputStream(keystore_properties_file))
+// }
 
 android {
-  signingConfigs {
-    release_signing_config {
-      storeFile file(keystore_properties['storeFile'])
-      storePassword keystore_properties['storePassword']
-      keyAlias keystore_properties['keyAlias']
-      keyPassword keystore_properties['keyPassword']
-      //enableV3Signing = true  // signing scheme version 2 is required and enabled by default and using enableV3Signing disables version 2 even when also using enableV2Signing
-    }
-  }
-  compileSdk 29 // this is also set in AndroidManifest.xml
+  // if (keystore_properties_file.exists()) {
+  //   signingConfigs {
+  //     release_signing_config {
+  //       storeFile file(keystore_properties['storeFile'])
+  //       storePassword keystore_properties['storePassword']
+  //       keyAlias keystore_properties['keyAlias']
+  //       keyPassword keystore_properties['keyPassword']
+  //       //enableV3Signing = true  // signing scheme version 2 is required and enabled by default and using enableV3Signing disables version 2 even when also using enableV2Signing
+  //     }
+  //   }
+  // }
+  // compileSdk 29 // this is also set in AndroidManifest.xml
+  compileSdkVersion 29
   buildToolsVersion "33.0.0"
   ndkVersion "25.1.8937393"
 
@@ -37,8 +40,9 @@ android {
 
   defaultConfig { // some of these are also set in AndroidManifest.xml
     applicationId "com.tom.bomberman_xr"
-    minSdk 29
-    targetSdk 29
+    minSdkVersion 29
+    targetSdkVersion 29
+    // compileSdk 29
     versionCode 1
     versionName "1.0"
     resValue "string", "app_name", application_name
@@ -49,7 +53,9 @@ android {
     }
     externalNativeBuild {
       cmake {
-        cppFlags '-std=c++20 -stdlib=libc++ -DANDROID_STL=c++_static -DOCULUS_QUEST_2 -DARM64_V8A -DMA_ENABLE_ONLY_SPECIFIC_BACKENDS -DMA_ENABLE_OPENSL -DGLM_FORCE_CXX2A -fno-exceptions -fno-rtti -fstrict-aliasing -Wstrict-aliasing'
+        arguments '-DBUILD_STANDARD_OPENXR_LOADER=ON'
+
+        cppFlags '-fno-exceptions -fno-rtti -fstrict-aliasing -Wstrict-aliasing'
         cppFlags '-DAPPLICATION_NAME=\\\\\\\"' + application_name + '\\\\\\\"'
       }
     }
@@ -64,7 +70,7 @@ android {
     release {
       minifyEnabled false
       proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-      signingConfig signingConfigs.release_signing_config
+//      signingConfig signingConfigs.release_signing_config
     }
   }
   compileOptions {
@@ -79,8 +85,11 @@ android {
   }
   buildFeatures {
     viewBinding true
+    prefab true
   }
 }
 
+
 dependencies {
+  implementation 'org.khronos.openxr:openxr_loader_for_android:1.0.26'
 }
