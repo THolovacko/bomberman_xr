@@ -7,9 +7,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(ANDROID)
-  option(BUILD_STANDARD_OPENXR_LOADER "Use the standard OpenXR loader instead of the Oculus one." ON)
+  option(OCULUS_QUEST_2 "Build for the Quest only?" OFF)
 else()
-  set(BUILD_STANDARD_OPENXR_LOADER ON)
+  option(OCULUS_PC "Build for Oculus headsets only?" OFF)
 endif()
 
 file(GLOB vulkan_shaders
@@ -72,24 +72,30 @@ target_include_directories(bomberman_xr PRIVATE
   src/
   ${CMAKE_CURRENT_BINARY_DIR}
 )
-target_compile_definitions(bomberman_xr PRIVATE MA_ENABLE_ONLY_SPECIFIC_BACKENDS MA_ENABLE_OPENSL GLM_FORCE_CXX2A)
+target_compile_definitions(bomberman_xr PRIVATE GLM_FORCE_CXX2A)
 foreach(file ${vulkan_shaders})
   message(${file})
   compile_shader(bomberman_xr ${file})
 endforeach()
 
+if(ANDROID)
+  target_compile_definitions(bomberman_xr PRIVATE MA_ENABLE_ONLY_SPECIFIC_BACKENDS MA_ENABLE_OPENSL)
+endif()
 
-
-if(BUILD_STANDARD_OPENXR_LOADER)
-  find_package(OpenXR REQUIRED)
-  target_compile_definitions(bomberman_xr PRIVATE BUILD_STANDARD_OPENXR_LOADER)
-else()
+if(OCULUS_QUEST_2)
   target_compile_definitions(bomberman_xr PRIVATE OCULUS_QUEST_2)
   include(OculusOpenXR.cmake)
   include(OculusAudio.cmake)
   target_link_libraries(bomberman_xr
     ovr_audio_static_64_lib
     ovr_audio_64_lib)
+else()
+  find_package(OpenXR REQUIRED)
 endif()
+
+if(OCULUS_PC)
+  target_compile_definitions(bomberman_xr PRIVATE OCULUS_PC)
+endif()
+
 target_link_libraries(bomberman_xr OpenXR::openxr_loader Vulkan::Vulkan)
 target_compile_definitions(bomberman_xr PRIVATE APPLICATION_NAME="${PROJECT_NAME}")

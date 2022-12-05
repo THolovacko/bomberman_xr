@@ -27,7 +27,6 @@ android {
   //     }
   //   }
   // }
-  // compileSdk 29 // this is also set in AndroidManifest.xml
   compileSdkVersion 29
   buildToolsVersion "33.0.0"
   ndkVersion "25.1.8937393"
@@ -54,7 +53,7 @@ android {
     }
     externalNativeBuild {
       cmake {
-        arguments '-DBUILD_STANDARD_OPENXR_LOADER=ON'
+//        arguments '-DOCULUS_QUEST_2=ON'
 
         cppFlags '-fno-exceptions -fno-rtti -fstrict-aliasing -Wstrict-aliasing'
 //        cppFlags '-DAPPLICATION_NAME=\\\\\\\"' + application_name + '\\\\\\\"'
