@@ -24,7 +24,7 @@ extern float      delta_time_seconds;
 extern InputState input_state;
 extern std::atomic<Vector3f> hmd_global_position;
 
-#if defined(OCULUS_QUEST_2)
+#ifdef __ANDROID__
   #include <android/log.h>
   #ifndef NDEBUG
     #define DEBUG_LOG(...) __android_log_print(ANDROID_LOG_DEBUG, "DEBUG", __VA_ARGS__)
