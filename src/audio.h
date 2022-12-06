@@ -21,29 +21,10 @@ void stop_audio_device();
 #ifndef TOM_ENGINE_AUDIO_IMPLEMENTATION_SINGLE
 #define TOM_ENGINE_AUDIO_IMPLEMENTATION_SINGLE
 
-#if defined(OCULUS_QUEST_2)
+#if defined(OCULUS_PC)
+  #include "audio_oculus_pc.cpp"
+#elif defined(OCULUS_QUEST_2)
   #include "audio_oculus_quest_2.cpp"
-// #elif defined(__ANDROID__)
-#elif defined(OCULUS_PC)
-  #include "audio_pc.cpp"
-#else
-bool init_audio() { return true; }
-void deactivate_audio() { }
-uint32_t create_audio_source(const char *file_path,
-                             const float attenuation_range_min_meters,
-                             const float attenuation_range_max_meters,
-                             const float radius_meters,
-                             const float reverb_send_level,
-                             const bool is_narrow_band) {
-  static uint32_t val = 0;
-  return val++;
-                             }
-void update_audio_source(const uint32_t id, const Vector3f position) { }
-void delete_audio_source(const uint32_t id) { }
-void play_audio_source(const uint32_t id, const bool should_loop) { }
-void stop_audio_source(const uint32_t id) { }
-void play_audio_device(){ }
-void stop_audio_device(){ }
 #endif
 
 #endif  // TOM_ENGINE_AUDIO_IMPLEMENTATION_SINGLE
