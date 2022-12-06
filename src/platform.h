@@ -24,7 +24,7 @@ extern float      delta_time_seconds;
 extern InputState input_state;
 extern std::atomic<Vector3f> hmd_global_position;
 
-#ifdef __ANDROID__
+#if defined(OCULUS_QUEST_2)
   #include <android/log.h>
   #ifndef NDEBUG
     #define DEBUG_LOG(...) __android_log_print(ANDROID_LOG_DEBUG, "DEBUG", __VA_ARGS__)
@@ -36,7 +36,7 @@ extern std::atomic<Vector3f> hmd_global_position;
   #include <android/asset_manager.h>
   FILE* android_fopen(const char* file_name, const char* mode);
   #define fopen(name, mode) android_fopen(name, mode)
-#else
+#elif defined(OCULUS_PC)
   #ifndef NDEBUG
     #include <cstdio>
     #define DEBUG_LOG(...) printf(__VA_ARGS__)
@@ -55,10 +55,10 @@ extern std::atomic<Vector3f> hmd_global_position;
 #ifndef TOM_ENGINE_PLATFORM_IMPLEMENTATION_SINGLE
 #define TOM_ENGINE_PLATFORM_IMPLEMENTATION_SINGLE
 
-#if defined (__ANDROID__)
-  #include "platform_android.cpp"
-#else
-  #include "platform_pc.cpp"
+#if defined(OCULUS_PC)
+  #include "platform_oculus_pc.cpp"
+#elif defined(OCULUS_QUEST_2)
+  #include "platform_oculus_quest_2.cpp"
 #endif
 
 #endif  // TOM_ENGINE_PLATFORM_IMPLEMENTATION_SINGLE

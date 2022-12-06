@@ -289,10 +289,10 @@ extern DirectionalLight directional_light;
 #ifndef TOM_ENGINE_GRAPHICS_IMPLEMENTATION_SINGLE
 #define TOM_ENGINE_GRAPHICS_IMPLEMENTATION_SINGLE
 
-#if defined(__ANDROID__)
-  #include "graphics_android.cpp"
-#else
-  #include "graphics_pc.cpp"
+#if defined(OCULUS_PC)
+  #include "graphics_oculus_pc.cpp"
+#elif defined(OCULUS_QUEST_2)
+  #include "graphics_oculus_quest_2.cpp"
 #endif
 
 #endif  // TOM_ENGINE_GRAPHICS_IMPLEMENTATION_SINGLE
