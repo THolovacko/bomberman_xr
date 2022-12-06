@@ -75,6 +75,7 @@ XrEnvironmentBlendMode               platform_xr_blend_mode              = {XR_E
 XrDebugUtilsMessengerEXT             platform_xr_debug_ext               = {};
 XrPassthroughFB                      platform_xr_passthrough_feature     = XR_NULL_HANDLE;
 XrPassthroughLayerFB                 platform_xr_passthrough_layer       = XR_NULL_HANDLE;
+bool                                 has_fb_passthrough                  = false;
 bool                                 is_xr_session_active                = false;
 const XrPosef                        xr_pose_identity                    = { {0,0,0,1}, {0,0,0} };
 std::vector<XrView>                  platform_xr_views;
@@ -365,23 +366,23 @@ bool init_platform() {
   {
     std::vector<const char*> active_extensions;
     const char *request_extensions[] = {
-      "XR_KHR_vulkan_enable2",
-      "XR_KHR_loader_init",
-      "XR_KHR_loader_init_android",
-      "XR_KHR_android_create_instance",
-      "XR_KHR_android_thread_settings",
-      "XR_KHR_swapchain_usage_input_attachment_bit",
-      "XR_KHR_visibility_mask",
-      "XR_KHR_vulkan_swapchain_format_list",
-      "XR_KHR_android_surface_swapchain",
-      "XR_FB_android_surface_swapchain_create",
-      "XR_META_vulkan_swapchain_create_info",
-      "XR_FB_display_refresh_rate",
-      "XR_FB_passthrough",
-      "XR_FB_triangle_mesh",
+        "XR_KHR_vulkan_enable2",
+        "XR_KHR_loader_init",
+        "XR_KHR_loader_init_android",
+        "XR_KHR_android_create_instance",
+        "XR_KHR_android_thread_settings",
+        "XR_KHR_swapchain_usage_input_attachment_bit",
+        "XR_KHR_visibility_mask",
+        "XR_KHR_vulkan_swapchain_format_list",
+        "XR_KHR_android_surface_swapchain",
+        "XR_FB_android_surface_swapchain_create",
+        "XR_META_vulkan_swapchain_create_info",
+        "XR_FB_display_refresh_rate",
+        "XR_FB_passthrough",
+        "XR_FB_triangle_mesh",
       //"XR_OCULUS_android_session_state_enable",
       #ifndef NDEBUG
-      "XR_EXT_debug_utils",
+        "XR_EXT_debug_utils",
       #endif
     };
 
@@ -394,6 +395,9 @@ bool init_platform() {
     for (size_t i=0; i < xr_extensions.size(); ++i) {
       if ( strcmp(xr_extensions[i].extensionName, "XR_KHR_vulkan_enable2") == 0 ) {
         is_vulkan_available = true;
+      }
+      if (strcmp(xr_extensions[i].extensionName, "XR_FB_passthrough") == 0) {
+        has_fb_passthrough = true;
       }
 
       for (int32_t request_extension_index=0; request_extension_index < std::size(request_extensions); ++request_extension_index) {
